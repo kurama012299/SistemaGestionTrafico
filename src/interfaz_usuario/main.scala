@@ -1,6 +1,7 @@
 package interfaz_usuario
 
 import com.formdev.flatlaf.FlatDarkLaf
+import logica.consultas.ConsultaConductor
 import logica.modelos.*
 
 import java.awt.*
@@ -15,7 +16,7 @@ object main {
 
     FlatDarkLaf.setup()
     SwingUtilities.invokeLater(() => {
-
+      
       val frame = new JFrame("Sistema de Tráfico")
       frame.setSize(750, 500)
       frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE)
@@ -28,16 +29,15 @@ object main {
 
       // Menú principal "Opciones"
       val menuOpciones = new JMenu("Opciones")
+      val menuReportes = new JMenu("Reportes")
 
       // Elementos del menú desplegable
       val menuItemConductor = new JMenuItem("Conductor")
       val menuItemLicencia = new JMenuItem("Licencia")
       val menuItemInfraccion = new JMenuItem("Infracción")
 
-
-
-      // Mostramos el JOptionPane con los campos
-
+      val menuItemReporteInfracciones= new JMenuItem("Infracciones emitidas")
+      val menuItemReporteLicencias= new JMenuItem("Licencias emitidas")
 
       // Panel principal (card layout para cambiar vistas)
       val cardPanel = new JPanel(new CardLayout())
@@ -161,7 +161,10 @@ object main {
       menuOpciones.add(menuItemConductor)
       menuOpciones.add(menuItemLicencia)
       menuOpciones.add(menuItemInfraccion)
+      menuReportes.add(menuItemReporteLicencias)
+      menuReportes.add(menuItemReporteInfracciones)
       menuBar.add(menuOpciones)
+      menuBar.add(menuReportes)
       frame.setJMenuBar(menuBar)
 
       // Mostrar ventana
@@ -200,7 +203,7 @@ object main {
     if (resultado == JOptionPane.OK_OPTION) {
       val contadorFilas = modelo.getRowCount
       val conductor = Conductor(
-        contadorFilas + 1,
+        (Some(contadorFilas + 1)),
         campoNombre.getText,
         campoApellido.getText,
         campoLicencia.getText,
