@@ -2,4 +2,4 @@ package logica.modelos
 
 import java.util.Date
 
-case class Infraccion(id:Long,codigo:String,descripcion:String,fecha:Date,gravedad:String)
+case class Infraccion(id:Long,id_licencia:Long,gravedad:String,fecha:Date)

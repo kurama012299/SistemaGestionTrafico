@@ -113,11 +113,19 @@ object main {
 
       // Datos para las tablas
       val conductorColumns = Array[Object]("ID", "Nombre", "Apellido", "Licencia", "Teléfono")
-      val conductorData = Array[Array[Object]](
-        Array[Object]("1", "Juan", "Pérez", "ABC123", "555-1234"),
-        Array[Object]("2", "María", "Gómez", "DEF456", "555-5678"),
-        Array[Object]("3", "Carlos", "López", "GHI789", "555-9012")
-      )
+      val conductorData: Array[Array[Object]] = {
+        val conductores = ConsultaConductor.obtenerTodosLosConductores()
+
+        conductores.map { conductor =>
+          Array[Object](
+            conductor.id.getOrElse("").toString,
+            conductor.nombre,
+            conductor.apellido,
+            conductor.licencia.get.id.getOrElse("").toString,
+            conductor.telefono
+          )
+        }.toArray
+      }
 
       val licenciaColumns = Array[Object]("ID", "Número", "Tipo", "Emisión", "Vencimiento")
       val licenciaData = Array[Array[Object]](
@@ -170,8 +178,6 @@ object main {
       // Mostrar ventana
       frame.add(cardPanel)
       frame.setVisible(true)
-
-
     }
     )
   }
@@ -206,7 +212,7 @@ object main {
         (Some(contadorFilas + 1)),
         campoNombre.getText,
         campoApellido.getText,
-        campoLicencia.getText,
+        null,
         campoTelefono.getText
       )
 
