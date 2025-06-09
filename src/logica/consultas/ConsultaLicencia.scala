@@ -4,6 +4,7 @@ import infraestructura.ConectorBaseDato
 import logica.modelos.{Conductor, Licencia}
 
 import java.sql.{PreparedStatement, ResultSet}
+import scala.collection.mutable.ListBuffer
 
 object ConsultaLicencia
 {
@@ -37,4 +38,21 @@ object ConsultaLicencia
     }
 
   }
+
+  def obtenerTodasLasLicencias(): List[Licencia] = {
+    ConectorBaseDato.conConexion { conn =>
+      val consulta = "SELECT * FROM licencia"
+      val stmt: PreparedStatement = conn.prepareStatement(consulta)
+      val rs: ResultSet = stmt.executeQuery()
+
+      val licencias = ListBuffer.empty[Licencia]
+
+      while (rs.next()) {
+        licencias += resultSetParaLicencia(rs)
+      }
+
+      licencias.toList
+    }
+  }
+
 }
