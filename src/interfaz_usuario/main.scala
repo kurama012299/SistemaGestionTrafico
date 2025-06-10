@@ -16,7 +16,7 @@ object main {
 
     FlatDarkLaf.setup()
     SwingUtilities.invokeLater(() => {
-      
+
       val frame = new JFrame("Sistema de Tráfico")
       frame.setSize(750, 500)
       frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE)
@@ -275,5 +275,4 @@ object main {
       modelo.setValueAt(campoTelefono.getText, fila, 4)
     }
   }
-
 }
