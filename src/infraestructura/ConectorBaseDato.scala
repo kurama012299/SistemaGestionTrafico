@@ -5,7 +5,7 @@ import java.sql.{Connection,DriverManager,ResultSet}
 object ConectorBaseDato {
   val url = "jdbc:postgresql://localhost:5432/sistema_gestion_licencia_scala"
   val user = "postgres"
-  val password = "Asbeel*04"
+  val password = "4622"
 
   Class.forName("org.postgresql.Driver")
 

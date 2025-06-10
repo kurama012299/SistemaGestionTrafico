@@ -44,15 +44,51 @@ object ConsultaLicencia
       val consulta = "SELECT * FROM licencia"
       val stmt: PreparedStatement = conn.prepareStatement(consulta)
       val rs: ResultSet = stmt.executeQuery()
-
-      val licencias = ListBuffer.empty[Licencia]
+      
+      var licencias: List[Licencia] = List.empty
 
       while (rs.next()) {
-        licencias += resultSetParaLicencia(rs)
+        licencias = licencias :+ resultSetParaLicencia(rs)
       }
 
-      licencias.toList
+      licencias
     }
   }
 
+  def crearLicenciaConsulta(licencia: Licencia): Either[Throwable, Unit] = {
+    ConectorBaseDato.conConexion { conn =>
+      try {
+        conn.setAutoCommit(false) 
+        
+        val consultaLicencia =
+          """INSERT INTO "Licencia" ("moto", "automovil", 
+           "camion", "omnibus", "puntos")
+           VALUES (?, ?, ?, ?, ?)"""
+
+        val stmt = conn.prepareStatement(consultaLicencia)
+        stmt.setBoolean(1, licencia.moto)
+        stmt.setBoolean(2, licencia.automovil)
+        stmt.setBoolean(3, licencia.camion)
+        stmt.setBoolean(4, licencia.omnibus)
+        stmt.setInt(5, licencia.puntos)
+
+        val filasAfectadas = stmt.executeUpdate()
+        stmt.close()
+
+        if (filasAfectadas == 1) {
+          conn.commit()
+          Right(())
+        } else {
+          conn.rollback()
+          Left(new RuntimeException("No se pudo insertar la licencia"))
+        }
+      } catch {
+        case e: Throwable =>
+          conn.rollback()
+          Left(e)
+      } finally {
+        conn.setAutoCommit(true)
+      }
+    }
+  }
 }
