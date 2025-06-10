@@ -6,7 +6,7 @@ import logica.modelos.Infraccion
 import java.sql.{PreparedStatement, ResultSet}
 import scala.collection.mutable.ListBuffer
 
-class ConsultaInfraccion {
+object ConsultaInfraccion {
 
   private def resultSetParaInfraccion(rs: ResultSet): Infraccion = {
     Infraccion(

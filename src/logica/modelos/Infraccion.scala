@@ -24,3 +24,4 @@ def infraccionSinId(
   Infraccion(None, id_licencia, puntos, gravedad, fecha)
 }
 
+

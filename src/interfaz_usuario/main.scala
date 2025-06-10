@@ -1,7 +1,7 @@
 package interfaz_usuario
 
 import com.formdev.flatlaf.FlatDarkLaf
-import logica.consultas.ConsultaConductor
+import logica.consultas.{ConsultaConductor, ConsultaInfraccion}
 import logica.modelos.*
 
 import java.awt.*
@@ -36,8 +36,8 @@ object main {
       val menuItemLicencia = new JMenuItem("Licencia")
       val menuItemInfraccion = new JMenuItem("Infracción")
 
-      val menuItemReporteInfracciones= new JMenuItem("Infracciones emitidas")
-      val menuItemReporteLicencias= new JMenuItem("Licencias emitidas")
+      val menuItemReporteInfracciones = new JMenuItem("Infracciones emitidas")
+      val menuItemReporteLicencias = new JMenuItem("Licencias emitidas")
 
       // Panel principal (card layout para cambiar vistas)
       val cardPanel = new JPanel(new CardLayout())
@@ -52,18 +52,25 @@ object main {
       val tableInfracciones = new JTable()
 
       // Función para crear tablas con botones
-      def createTablePanel(title: String, columns: Array[Object], data: Array[Array[Object]]): JPanel =
+
+      def limpiarTabla(table:JTable,nuevasColumnas:Array[Object] = null):DefaultTableModel ={
+        val model=new DefaultTableModel(nuevasColumnas,0)
+        table.setModel(model)
+        model
+      }
+      def agregarFila(model:DefaultTableModel,datos:Array[Any]):Unit={
+        val fila=datos.map(_.asInstanceOf[Object])
+        model.addRow(fila)
+      }
+
+      def createTablePanel(title: String, columns: Array[Object], table: JTable): JPanel =
         val panel = new JPanel(new BorderLayout())
         panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20))
 
         // Crear tabla
-        val tableModel = new DefaultTableModel(data, columns) {
-          override def isCellEditable(row: Int, column: Int): Boolean = false
-        }
-        tableConductores.getTableHeader.setReorderingAllowed(false)
-        tableConductores.getTableHeader.setResizingAllowed(false)
-        tableConductores.setModel(tableModel)
-        tableConductores.setFillsViewportHeight(true)
+        table.getTableHeader.setReorderingAllowed(false)
+        table.getTableHeader.setResizingAllowed(false)
+        table.setFillsViewportHeight(true)
 
 
         // Crear botones
@@ -75,7 +82,8 @@ object main {
         // Configurar acciones de los botones
         agregarBtn.addActionListener((e: ActionEvent) => {
           val modelo = tableConductores.getModel.asInstanceOf[DefaultTableModel]
-          agregarConductor(modelo)
+          val modeloLicencias=tableLicencias.getModel.asInstanceOf[DefaultTableModel]
+          agregarConductor(modelo,modeloLicencias)
         })
 
         editarBtn.addActionListener((e: ActionEvent) => {
@@ -101,59 +109,81 @@ object main {
           }
         })
 
-        buttonPanel.add(agregarBtn)
-        buttonPanel.add(editarBtn)
-        buttonPanel.add(eliminarBtn)
 
+
+        if(title.equalsIgnoreCase("Conductores")){
+          panel.add(new JScrollPane(tableConductores), BorderLayout.CENTER)
+          buttonPanel.add(agregarBtn)
+          buttonPanel.add(editarBtn)
+          buttonPanel.add(eliminarBtn)
+        }
+        else if(title.equalsIgnoreCase("Infracciones")){
+          panel.add(new JScrollPane(tableInfracciones), BorderLayout.CENTER)
+          buttonPanel.add(agregarBtn)
+          buttonPanel.add(editarBtn)
+          buttonPanel.add(eliminarBtn)
+        }
+        else if(title.equalsIgnoreCase("Licencias")){
+          panel.add(new JScrollPane(tableLicencias), BorderLayout.CENTER)
+          buttonPanel.add(editarBtn)
+          buttonPanel.add(eliminarBtn)
+        }
         // Configurar panel
         panel.add(new JLabel(title, SwingConstants.CENTER), BorderLayout.NORTH)
-        panel.add(new JScrollPane(tableConductores), BorderLayout.CENTER)
         panel.add(buttonPanel, BorderLayout.SOUTH)
         panel
 
       // Datos para las tablas
-      val conductorColumns = Array[Object]("ID", "Nombre", "Apellido", "Licencia", "Teléfono")
-      val conductorData: Array[Array[Object]] = {
-        val conductores = ConsultaConductor.obtenerTodosLosConductores()
+      def cargarConductores(): JPanel = {
+        val conductorColumns = Array[Object]("ID", "Nombre", "Apellido", "Licencia", "Teléfono")
+        val modelConductor=limpiarTabla(tableConductores,conductorColumns)
+          val conductores = ConsultaConductor.obtenerTodosLosConductores()
 
-        conductores.map { conductor =>
-          Array[Object](
-            conductor.id.getOrElse("").toString,
-            conductor.nombre,
-            conductor.apellido,
-            conductor.licencia.get.id.getOrElse("").toString,
-            conductor.telefono
-          )
-        }.toArray
+            conductores.foreach { conductor =>
+            val fila=Array[Any](
+              conductor.id.getOrElse("N/A").toString,
+              conductor.nombre,
+              conductor.apellido,
+              conductor.licencia.get.id.getOrElse("").toString,
+              conductor.telefono
+            )
+            agregarFila(modelConductor,fila)
+          }
+            createTablePanel("Conductores",conductorColumns,tableConductores)
+        }
+
+
+
+      def cargarInfracciones(): JPanel = {
+        val infraccionColumns = Array[Object]("ID Licencia", "Puntos deducidos", "Gravedad", "Fecha")
+         val modelInfraccion=limpiarTabla(tableInfracciones,infraccionColumns)
+          val infracciones = ConsultaInfraccion.obtenerTodasLasInfracciones()
+
+          infracciones.foreach { infraccion =>
+            val fila=Array[Any](
+              infraccion.id_licencia.toString,
+              infraccion.puntos,
+              infraccion.gravedad,
+              infraccion.fecha
+            )
+            agregarFila(modelInfraccion,fila)
+          }
+
+        createTablePanel("Infracciones", infraccionColumns,tableInfracciones)
       }
 
-      val licenciaColumns = Array[Object]("ID", "Número", "Tipo", "Emisión", "Vencimiento")
-      val licenciaData = Array[Array[Object]](
-        Array[Object]("1", "ABC123", "A", "01/01/2020", "01/01/2030"),
-        Array[Object]("2", "DEF456", "B", "15/03/2021", "15/03/2031"),
-        Array[Object]("3", "GHI789", "C", "20/05/2022", "20/05/2032")
-      )
 
-      val infraccionColumns = Array[Object]("ID", "Código", "Descripción", "Fecha", "Gravedad")
-      val infraccionData = Array[Array[Object]](
-        Array[Object]("1", "ART-45", "Exceso de velocidad", "10/06/2023", "Leve"),
-        Array[Object]("2", "ART-78", "No usar cinturón", "15/07/2023", "Grave"),
-        Array[Object]("3", "ART-92", "Teléfono al conducir", "20/08/2023", "Muy grave")
-      )
 
-      // Crear paneles para cada vista
-      val conductorPanel = createTablePanel("Conductores", conductorColumns, conductorData)
-      //val licenciaPanel = createTablePanel("Licencias", licenciaColumns, licenciaData)
-      //val infraccionPanel = createTablePanel("Infracciones", infraccionColumns, infraccionData)
+
+
 
       // Agregar paneles al card layout
       cardPanel.add(initialPanel, "inicio")
-      cardPanel.add(conductorPanel, "conductores")
-      //cardPanel.add(licenciaPanel, "licencias")
-      //cardPanel.add(infraccionPanel, "infracciones")
 
       // Configurar acciones del menú
       menuItemConductor.addActionListener((e: ActionEvent) => {
+        val panel=cargarConductores()
+        cardPanel.add(panel, "conductores")
         cardPanel.getLayout.asInstanceOf[CardLayout].show(cardPanel, "conductores")
       })
 
@@ -162,6 +192,8 @@ object main {
       })
 
       menuItemInfraccion.addActionListener((e: ActionEvent) => {
+        val panel = cargarInfracciones()
+        cardPanel.add(panel, "infracciones")
         cardPanel.getLayout.asInstanceOf[CardLayout].show(cardPanel, "infracciones")
       })
 
@@ -183,19 +215,27 @@ object main {
   }
 
 
-  def agregarConductor(modelo: DefaultTableModel): Unit = {
+  def agregarConductor(modeloConductor: DefaultTableModel,modeloLicencia:DefaultTableModel): Unit = {
 
     val campoNombre = new JTextField()
     val campoApellido = new JTextField()
     val campoLicencia = new JTextField()
     val campoTelefono = new JTextField()
+    val categoriaCarro=new JRadioButton()
+    val categoriaMoto=new JRadioButton()
+    val categoriaOmnibus=new JRadioButton()
+    val categoriaCamion=new JRadioButton()
 
     // Creamos un array con los campos y sus etiquetas
     val campos = Array(
       "Nombre:", campoNombre,
       "Apellido:", campoApellido,
       "Licencia:", campoLicencia,
-      "Teléfono:", campoTelefono
+      "Teléfono:", campoTelefono,
+      "Categoria Carro",categoriaCarro,
+      "Categoria Moto",categoriaMoto,
+      "Categoria Camion",categoriaCamion,
+      "Categoria Omnibus",categoriaOmnibus,
     )
 
     val resultado = JOptionPane.showConfirmDialog(
@@ -207,12 +247,23 @@ object main {
 
     // Si el usuario hace clic en OK, procesamos los datos
     if (resultado == JOptionPane.OK_OPTION) {
-      val contadorFilas = modelo.getRowCount
+      val contadorFilasLicencia = modeloLicencia.getRowCount
+      val licencia=Licencia(
+        (Some(contadorFilasLicencia + 1)),
+        categoriaMoto.isSelected,
+        categoriaCarro.isSelected,
+        categoriaCamion.isSelected,
+        categoriaOmnibus.isSelected,
+        0,
+        null,
+        null
+      )
+      val contadorFilas = modeloConductor.getRowCount
       val conductor = Conductor(
         (Some(contadorFilas + 1)),
         campoNombre.getText,
         campoApellido.getText,
-        null,
+        (Some(licencia)),
         campoTelefono.getText
       )
 
@@ -229,7 +280,7 @@ object main {
         "Éxito",
         JOptionPane.INFORMATION_MESSAGE
       )
-      modelo.addRow(Array[AnyRef](
+      modeloConductor.addRow(Array[AnyRef](
         String.valueOf(contadorFilas + 1),
         campoNombre.getText,
         campoApellido.getText,
