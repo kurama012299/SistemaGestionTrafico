@@ -1,13 +1,17 @@
 package interfaz_usuario
 
 import com.formdev.flatlaf.FlatDarkLaf
+import com.toedter.calendar.{JCalendar, JDateChooser}
 import logica.consultas.{ConsultaConductor, ConsultaInfraccion}
 import logica.modelos.*
 
 import java.awt.*
 import java.awt.event.*
+import java.text.SimpleDateFormat
+import java.util.{Date, Locale}
 import javax.swing.*
 import javax.swing.table.DefaultTableModel
+import scala.jdk.CollectionConverters.*
 import scala.language.postfixOps
 
 
@@ -80,48 +84,79 @@ object main {
         val eliminarBtn = new JButton("Eliminar")
 
         // Configurar acciones de los botones
-        agregarBtn.addActionListener((e: ActionEvent) => {
-          val modelo = tableConductores.getModel.asInstanceOf[DefaultTableModel]
-          val modeloLicencias=tableLicencias.getModel.asInstanceOf[DefaultTableModel]
-          agregarConductor(modelo,modeloLicencias)
-        })
-
-        editarBtn.addActionListener((e: ActionEvent) => {
-          val filaSeleccionada = tableConductores.getSelectedRow
-          val modelo = tableConductores.getModel.asInstanceOf[DefaultTableModel]
-          if (filaSeleccionada == -1) {
-            JOptionPane.showMessageDialog(frame, s"Seleccione un registro para editar en $title")
-          } else {
-            editarConductor(modelo, filaSeleccionada)
-            JOptionPane.showMessageDialog(frame, s"Editando registro ID: ${tableConductores.getValueAt(tableConductores.getSelectedRow(), 0)} en $title")
-          }
-        })
-
-        eliminarBtn.addActionListener((e: ActionEvent) => {
-          val filaSeleccionada = tableConductores.getSelectedRow
-          val modelo = tableConductores.getModel.asInstanceOf[DefaultTableModel]
-          if (tableConductores.getSelectedRow() == -1) {
-            JOptionPane.showMessageDialog(frame, s"Seleccione un registro para eliminar en $title")
-          } else {
-            modelo.removeRow(filaSeleccionada)
-            JOptionPane.showMessageDialog(frame, s"Acción eliminar para registro ID: ${tableConductores.getValueAt(tableConductores.getSelectedRow(), 0)} en $title")
-            // Nota: No eliminamos realmente el registro como se solicitó
-          }
-        })
 
 
 
         if(title.equalsIgnoreCase("Conductores")){
           panel.add(new JScrollPane(tableConductores), BorderLayout.CENTER)
+          agregarBtn.addActionListener((e: ActionEvent) => {
+            val modelo = tableConductores.getModel.asInstanceOf[DefaultTableModel]
+            val modeloLicencias = tableLicencias.getModel.asInstanceOf[DefaultTableModel]
+            agregarConductor(modelo, modeloLicencias)
+          })
+
+          editarBtn.addActionListener((e: ActionEvent) => {
+            val filaSeleccionada = tableConductores.getSelectedRow
+            val modelo = tableConductores.getModel.asInstanceOf[DefaultTableModel]
+            if (filaSeleccionada == -1) {
+              JOptionPane.showMessageDialog(frame, s"Seleccione un registro para editar en $title")
+            } else {
+              editarConductor(modelo, filaSeleccionada)
+              JOptionPane.showMessageDialog(frame, s"Editando registro ID: ${tableConductores.getValueAt(tableConductores.getSelectedRow(), 0)} en $title")
+            }
+          })
+
+          eliminarBtn.addActionListener((e: ActionEvent) => {
+            val filaSeleccionada = tableConductores.getSelectedRow
+            val modelo = tableConductores.getModel.asInstanceOf[DefaultTableModel]
+            if (tableConductores.getSelectedRow() == -1) {
+              JOptionPane.showMessageDialog(frame, s"Seleccione un registro para eliminar en $title")
+            } else {
+              modelo.removeRow(filaSeleccionada)
+              JOptionPane.showMessageDialog(frame, s"Acción eliminar para registro ID: ${tableConductores.getValueAt(tableConductores.getSelectedRow(), 0)} en $title")
+              // Nota: No eliminamos realmente el registro como se solicitó
+            }
+          })
           buttonPanel.add(agregarBtn)
           buttonPanel.add(editarBtn)
           buttonPanel.add(eliminarBtn)
+
         }
         else if(title.equalsIgnoreCase("Infracciones")){
           panel.add(new JScrollPane(tableInfracciones), BorderLayout.CENTER)
+          agregarBtn.addActionListener((e: ActionEvent) => {
+            val modelo = tableInfracciones.getModel.asInstanceOf[DefaultTableModel]
+            agregarInfraccion(modelo)
+          })
+
+          editarBtn.addActionListener((e: ActionEvent) => {
+            val filaSeleccionada = tableInfracciones.getSelectedRow
+            val modelo = tableInfracciones.getModel.asInstanceOf[DefaultTableModel]
+            if (filaSeleccionada == -1) {
+              JOptionPane.showMessageDialog(frame, s"Seleccione un registro para editar en $title")
+            } else {
+              editarInfraccion(modelo, filaSeleccionada)
+              JOptionPane.showMessageDialog(frame, s"Editando registro ID: ${tableInfracciones.getValueAt(tableInfracciones.getSelectedRow(), 0)} en $title")
+            }
+          })
+
+          eliminarBtn.addActionListener((e: ActionEvent) => {
+            val filaSeleccionada = tableInfracciones.getSelectedRow
+            val modelo = tableInfracciones.getModel.asInstanceOf[DefaultTableModel]
+            if (tableInfracciones.getSelectedRow() == -1) {
+              JOptionPane.showMessageDialog(frame, s"Seleccione un registro para eliminar en $title")
+            } else {
+              modelo.removeRow(filaSeleccionada)
+              JOptionPane.showMessageDialog(frame, s"Acción eliminar para registro ID: ${tableInfracciones.getValueAt(tableInfracciones.getSelectedRow(), 0)} en $title")
+              // Nota: No eliminamos realmente el registro como se solicitó
+            }
+          })
+
+
           buttonPanel.add(agregarBtn)
           buttonPanel.add(editarBtn)
           buttonPanel.add(eliminarBtn)
+
         }
         else if(title.equalsIgnoreCase("Licencias")){
           panel.add(new JScrollPane(tableLicencias), BorderLayout.CENTER)
@@ -155,7 +190,7 @@ object main {
 
 
       def cargarInfracciones(): JPanel = {
-        val infraccionColumns = Array[Object]("ID Licencia", "Puntos deducidos", "Gravedad", "Fecha")
+        val infraccionColumns = Array[Object]("ID","ID Licencia", "Puntos deducidos", "Gravedad", "Fecha")
          val modelInfraccion=limpiarTabla(tableInfracciones,infraccionColumns)
           val infracciones = ConsultaInfraccion.obtenerTodasLasInfracciones()
 
@@ -298,6 +333,98 @@ object main {
 
   }
 
+  def agregarInfraccion(modeloInfraccion: DefaultTableModel): Unit = {
+
+    val opcionesPuntos = Array[AnyRef](" ",Integer.valueOf(8),Integer.valueOf(10),Integer.valueOf(12))
+    val modeloOpcionesPuntos=new DefaultComboBoxModel[AnyRef](opcionesPuntos)
+
+    val opcionesGravedad = Array[String](" ","Leve", "Grave", "Muy grave")
+    val modeloOpcionesGravedad = new DefaultComboBoxModel[String](opcionesGravedad)
+
+      val campoIdLicencia= new JTextField()
+      val campoPuntosDeducidos= new JComboBox[AnyRef](modeloOpcionesPuntos)
+      val campoGravedad = new JComboBox[String](modeloOpcionesGravedad)
+      val campoFecha = new JDateChooser()
+
+    // Creamos un array con los campos y sus etiquetas
+    val campos = Array(
+      "Id Licencia:", campoIdLicencia,
+      "Puntos deducidos:", campoPuntosDeducidos,
+      "Gravedad:", campoGravedad,
+      "Fecha:", campoFecha
+    )
+
+    val resultado = JOptionPane.showConfirmDialog(
+      null,
+      campos,
+      "Registro de Infraccion",
+      JOptionPane.OK_CANCEL_OPTION
+    )
+
+    // Si el usuario hace clic en OK, procesamos los datos
+    if (resultado == JOptionPane.OK_OPTION) {
+      val contadorFilas = modeloInfraccion.getRowCount
+      val infraccion = Infraccion(
+        (Some(contadorFilas + 1)),
+        campoIdLicencia.getText.toLong,
+        Integer.valueOf(campoPuntosDeducidos.getSelectedItem.toString) ,
+        campoGravedad.getSelectedItem.toString,
+        campoFecha.getDate
+      )
+
+      val formato= new SimpleDateFormat("dd/MM/yyyy",new Locale("es","ES"))
+      val fechaFormateada = formato.format(infraccion.fecha)
+
+      val conductorInfractor=ConsultaConductor.obtenerConductorPorLicencia(infraccion.id_licencia)
+      // Mostramos los datos capturados (puedes guardarlos en una lista, BD, etc.)
+      var infractor = ""
+      conductorInfractor match{
+        case Some(conductor: Conductor) =>
+          infractor=conductor.nombre
+        case None =>
+          println("No existe conductor")
+      }
+
+      if(!infractor.equalsIgnoreCase("")){
+        JOptionPane.showMessageDialog(
+          null,
+          s"""
+             |Infraccion registrada:
+             |Nombre conductor: $infractor
+             |Puntos deducidos: ${infraccion.puntos}
+             |Gravedad: ${infraccion.gravedad}
+             |Fecha: $fechaFormateada
+             |""".stripMargin,
+          "Éxito",
+          JOptionPane.INFORMATION_MESSAGE
+        )
+        modeloInfraccion.addRow(Array[AnyRef](
+          String.valueOf(contadorFilas + 1),
+          campoIdLicencia.getText,
+          campoPuntosDeducidos.getSelectedItem.toString,
+          campoGravedad.getSelectedItem.toString,
+          fechaFormateada)
+        )
+      }
+      else{
+        JOptionPane.showMessageDialog(
+          null,
+          "No se encontro el conductor con la licencia dada",
+          "Aviso",
+          JOptionPane.WARNING_MESSAGE
+        )
+      }
+    } else {
+      JOptionPane.showMessageDialog(
+        null,
+        "Registro cancelado",
+        "Aviso",
+        JOptionPane.WARNING_MESSAGE
+      )
+    }
+
+  }
+
   def editarConductor(modelo: DefaultTableModel, fila: Int): Unit = {
     // Obtener datos actuales de la fila
     val nombre = modelo.getValueAt(fila, 1).toString
@@ -326,4 +453,62 @@ object main {
       modelo.setValueAt(campoTelefono.getText, fila, 4)
     }
   }
+
+
+  def editarInfraccion(modelo: DefaultTableModel, fila: Int): Unit = {
+    // Obtener datos actuales de la fila
+
+    val opcionesPuntos = Array[AnyRef](" ", Integer.valueOf(8), Integer.valueOf(10), Integer.valueOf(12))
+    val modeloOpcionesPuntos = new DefaultComboBoxModel[AnyRef](opcionesPuntos)
+
+    val opcionesGravedad = Array[String](" ", "Leve", "Grave", "Muy grave")
+    val modeloOpcionesGravedad = new DefaultComboBoxModel[String](opcionesGravedad)
+
+    val idLicencia = modelo.getValueAt(fila, 1).toString
+    val puntosDeducidos = modelo.getValueAt(fila, 2).toString
+    val gravedad = modelo.getValueAt(fila, 3).toString
+    val fecha = modelo.getValueAt(fila, 4).toString
+
+
+    // Crear campos con los valores actuales
+    val campoIdLicencia = new JTextField(idLicencia)
+    val campoPuntosDeducidos = new JComboBox[AnyRef](modeloOpcionesPuntos)
+    campoPuntosDeducidos.setSelectedItem(puntosDeducidos)
+    val campoGravedad = new JComboBox[String](modeloOpcionesGravedad)
+    campoGravedad.setSelectedItem(gravedad)
+    val campoFecha = new JDateChooser()
+    convertirFecha(fecha) match
+      case Some(fecha) =>
+        campoFecha.setDate(fecha)
+      case None =>
+        println("Formato de fecha incorrecto")
+
+    val formato = new SimpleDateFormat("dd/MM/yyyy", new Locale("es", "ES"))
+    val fechaFormateada = formato.format(campoFecha.getDate)
+
+    val campos = Array(
+      "Id Licencia:", campoIdLicencia,
+      "Puntos deducidos:", campoPuntosDeducidos.getSelectedItem.toString,
+      "Gravedad:", campoGravedad.getSelectedItem,
+      "Fecha:", fechaFormateada
+    )
+
+    if (JOptionPane.showConfirmDialog(null, campos, "Editar Conductor", JOptionPane.OK_CANCEL_OPTION) == JOptionPane.OK_OPTION) {
+      // Actualizar la fila
+      modelo.setValueAt(campoIdLicencia.getText, fila, 1)
+      modelo.setValueAt(campoPuntosDeducidos.getSelectedItem.toString, fila, 2)
+      modelo.setValueAt(campoGravedad.getSelectedItem, fila, 3)
+      modelo.setValueAt(fechaFormateada, fila, 4)
+    }
+  }
+
+  def convertirFecha(fecha:String):Option[Date] = {
+    try {
+      val formato = new SimpleDateFormat("dd/MM/yyyy")
+      formato.setLenient(false)
+      Some(formato.parse(fecha))
+    } catch
+      case e: Exception => None
+  }
+
 }
