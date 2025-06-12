@@ -35,6 +35,22 @@ object ConsultaConductor {
 
   }
 
+  def obtenerConductorPorLicencia(id_Licencia:Long): Option[Conductor] ={
+    ConectorBaseDato.conConexion { conn =>
+      val consulta = "SELECT * FROM conductor WHERE id_licencia = ?"
+      val stmt: PreparedStatement = conn.prepareStatement(consulta)
+      stmt.setLong(1, id_Licencia)
+      val rs: ResultSet = stmt.executeQuery()
+
+      if (rs.next()) {
+        Some(resultSetParaConductor(rs))
+      }
+      else {
+        None
+      }
+    }
+  }
+
   def obtenerTodosLosConductores(): List[Conductor] = {
     ConectorBaseDato.conConexion { conn =>
       val consulta = "SELECT * FROM conductor"
