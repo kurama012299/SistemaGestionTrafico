@@ -20,5 +20,11 @@ object Conductor {
                     telefono:String
                     ): Conductor = Conductor(None,nombre,apellido,licencia, telefono)
 
+  def conductorSinIdYSinLicencia(
+                      nombre: String,
+                      apellido: String,
+                      telefono: String
+                    ): Conductor = Conductor(None, nombre, apellido,None, telefono)
+
 }
 

@@ -3,7 +3,7 @@ package logica.consultas
 import infraestructura.ConectorBaseDato
 import logica.modelos.Infraccion
 
-import java.sql.{PreparedStatement, ResultSet}
+import java.sql.{PreparedStatement, ResultSet, SQLException}
 import scala.collection.mutable.ListBuffer
 
 object ConsultaInfraccion {
@@ -51,41 +51,114 @@ object ConsultaInfraccion {
     }
   }
   
-  def crearInfraccionConsulta(infraccion: Infraccion): Either[Throwable, Unit] = {
-    ConectorBaseDato.conConexion { conn =>
-      var stmt: java.sql.PreparedStatement = null
+  def crearInfraccionConsulta(infraccion: Infraccion): Unit = {
+   val conn = ConectorBaseDato.conConexion { conn =>
       try {
         conn.setAutoCommit(false)
 
         val consultaInfraccion =
-          """INSERT INTO "Infraccion" ("id_licencia", "puntos", 
+          """INSERT INTO "infraccion" ("id_licencia", "puntos_deducidos",
            "gravedad", "fecha")
            VALUES (?, ?, ?, ?)"""
 
-        stmt = conn.prepareStatement(consultaInfraccion)
-        stmt.setLong(1,infraccion.id_licencia)
+        val stmt = conn.prepareStatement(consultaInfraccion)
+        stmt.setLong(1, infraccion.id_licencia)
         stmt.setInt(2, infraccion.puntos)
         stmt.setString(3, infraccion.gravedad)
         stmt.setDate(4, new java.sql.Date(infraccion.fecha.getTime)) // Conversión explícita a java.sql.Date
+        stmt.executeUpdate()
+        stmt.close()
 
-        val filasAfectadas = stmt.executeUpdate()
+        val updateLicencia =
+          """
+             UPDATE "licencia"
+             SET puntos = puntos + ?
+             WHERE "id" = ? AND puntos <= 36
+           """
+        val stmtLicencia = conn.prepareStatement(updateLicencia)
+        stmtLicencia.setInt(1, infraccion.puntos)
+        stmtLicencia.setLong(2, infraccion.id_licencia)
 
-        if (filasAfectadas == 1) {
-          conn.commit()
-          Right(())
-        } else {
-          conn.rollback()
-          Left(new RuntimeException("No se pudo insertar la infracción")) // Mejor mensaje de error
+        val filasActualizadas = stmtLicencia.executeUpdate()
+        stmtLicencia.close()
+
+        // Verificación
+        if (filasActualizadas != 1) {
+          throw new SQLException("Licencia no encontrada o puntos insuficientes")
         }
+
+        conn.commit() // Confirmar transacción
+        println("Infracción registrada y puntos actualizados")
+
       } catch {
-        case e: Throwable =>
-          if (conn != null) conn.rollback()
-          Left(e)
+        case e: SQLException =>
+          conn.rollback()
+          println(s"Error transaccional: ${e.getMessage}")
+          throw e
       } finally {
-        if (stmt != null) stmt.close()
-        if (conn != null) conn.setAutoCommit(true)
+        conn.setAutoCommit(true)
+        conn.close()
       }
     }
   }
+
+  def editarInfraccionConsulta(infraccion: Infraccion,puntosAnteriores:Int): Unit = {
+    infraccion.id match
+      case None => Left("No se pudo encontrar la infraccion")
+      case Some(id)=>
+        ConectorBaseDato.conConexion { conn =>
+          try {
+            val puntosCambiaron=infraccion.puntos != puntosAnteriores
+            val consulta =
+              """
+              UPDATE infraccion
+              SET puntos_deducidos = ?, gravedad = ?, fecha = ?
+              WHERE id = ?
+            """
+            val stmtInfraccion = conn.prepareStatement(consulta)
+            try{
+              stmtInfraccion.setInt(1, infraccion.puntos)
+              stmtInfraccion.setString(2, infraccion.gravedad)
+              stmtInfraccion.setDate(3, new java.sql.Date(infraccion.fecha.getTime))
+              stmtInfraccion.setLong(4, id)
+              if (stmtInfraccion.executeUpdate() != 1)
+                return Left("Infracción no encontrada")
+            }finally {
+              stmtInfraccion.close()
+            }
+
+            if(puntosCambiaron){
+              val licencia=ConsultaLicencia.obtenerLicenciaPorId(infraccion.id_licencia)
+              licencia.get.id match{
+                case None => Left("No se pudo encontrar la licencia")
+                case Some(idLicencia)=>
+                  val diferencia=(puntosAnteriores-infraccion.puntos)
+                  val consultaLicencia =
+                    """
+                       UPDATE "licencia"
+                       SET puntos = puntos + ?
+                       WHERE id = ? AND puntos <=36
+                     """
+                  val stmLicencia = conn.prepareStatement(consultaLicencia)
+                  try{
+                    stmLicencia.setInt(1, -diferencia)
+                    stmLicencia.setLong(2, idLicencia)
+                    if (stmLicencia.executeUpdate() != 1 )
+                      return Left("no se encontro Licencia")
+                  }finally{
+                    stmLicencia.close()
+                  }
+
+              }
+
+
+            }
+            Right(())
+          } catch {
+            case e: SQLException => Left(s"Error de BD: ${e.getMessage}")
+          }
+        }
+  }
+
 }
 

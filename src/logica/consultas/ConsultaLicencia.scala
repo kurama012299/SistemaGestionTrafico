@@ -3,7 +3,7 @@ package logica.consultas
 import infraestructura.ConectorBaseDato
 import logica.modelos.{Conductor, Licencia}
 
-import java.sql.{PreparedStatement, ResultSet}
+import java.sql.{Date, PreparedStatement, ResultSet, SQLException}
 import scala.collection.mutable.ListBuffer
 
 object ConsultaLicencia
@@ -50,45 +50,37 @@ object ConsultaLicencia
       while (rs.next()) {
         licencias = licencias :+ resultSetParaLicencia(rs)
       }
-
       licencias
     }
   }
 
-  def crearLicenciaConsulta(licencia: Licencia): Either[Throwable, Unit] = {
-    ConectorBaseDato.conConexion { conn =>
-      try {
-        conn.setAutoCommit(false) 
-        
-        val consultaLicencia =
-          """INSERT INTO "Licencia" ("moto", "automovil", 
-           "camion", "omnibus", "puntos")
-           VALUES (?, ?, ?, ?, ?)"""
+  def editarLicenciaConsulta(licencia: Licencia): Unit = {
+    licencia.id match {
+      case None => Left("No se encuentra el id_licencia")
+      case Some(id)=>
+        ConectorBaseDato.conConexion { conn =>
+          try {
+            val consulta =
+              """
+          UPDATE licencia
+          SET moto = ?, automovil = ?, camion = ?, omnibus = ?
+          WHERE id = ?
+        """
+            val stmt = conn.prepareStatement(consulta)
+            stmt.setBoolean(1,licencia.moto)
+            stmt.setBoolean(2,licencia.automovil)
+            stmt.setBoolean(3,licencia.camion)
+            stmt.setBoolean(4,licencia.omnibus)
+            stmt.setLong(5,id)
 
-        val stmt = conn.prepareStatement(consultaLicencia)
-        stmt.setBoolean(1, licencia.moto)
-        stmt.setBoolean(2, licencia.automovil)
-        stmt.setBoolean(3, licencia.camion)
-        stmt.setBoolean(4, licencia.omnibus)
-        stmt.setInt(5, licencia.puntos)
-
-        val filasAfectadas = stmt.executeUpdate()
-        stmt.close()
-
-        if (filasAfectadas == 1) {
-          conn.commit()
-          Right(())
-        } else {
-          conn.rollback()
-          Left(new RuntimeException("No se pudo insertar la licencia"))
+            if (stmt.executeUpdate() == 1) Right(())
+            else Left("Licencia no encontrada")
+          } catch {
+            case e: SQLException => Left(s"Error de BD: ${e.getMessage}")
+          }
         }
-      } catch {
-        case e: Throwable =>
-          conn.rollback()
-          Left(e)
-      } finally {
-        conn.setAutoCommit(true)
-      }
     }
+
   }
+
 }
