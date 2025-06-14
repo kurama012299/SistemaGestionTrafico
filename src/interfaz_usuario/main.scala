@@ -114,9 +114,18 @@ object main {
             if (tableConductores.getSelectedRow() == -1) {
               JOptionPane.showMessageDialog(frame, s"Seleccione un registro para eliminar en $title")
             } else {
-              if(mostrarMensajeConfirmacionEliminar()) {
-                modelo.removeRow(filaSeleccionada)
+              try{
+                val carnetIdentidad: Long=modelo.getValueAt(tableConductores.getSelectedRow,0).toString.toLong
+                val idLicencia:Long=modelo.getValueAt(tableConductores.getSelectedRow,3).toString.toLong
+                ConsultaConductor.eliminarConductor(carnetIdentidad,idLicencia)
+                if (mostrarMensajeConfirmacionEliminar()) {
+                  modelo.removeRow(filaSeleccionada)
+                }
+              }catch{
+                case e:Exception=>
+                  JOptionPane.showMessageDialog(frame, e.getMessage)
               }
+
             }
           })
           buttonPanel.add(agregarBtn)
@@ -148,9 +157,17 @@ object main {
             if (tableInfracciones.getSelectedRow() == -1) {
               JOptionPane.showMessageDialog(frame, s"Seleccione un registro para eliminar en $title")
             } else {
-              if(mostrarMensajeConfirmacionEliminar()){
-                modelo.removeRow(filaSeleccionada)
+              try{
+                val idInfraccion=modelo.getValueAt(tableInfracciones.getSelectedRow,0).toString.toLong
+                ConsultaInfraccion.eliminarInfraccion(idInfraccion)
+                if (mostrarMensajeConfirmacionEliminar()) {
+                  modelo.removeRow(filaSeleccionada)
+                }
+              }catch{
+                case e:Exception=>
+                  JOptionPane.showMessageDialog(frame, e.getMessage)
               }
+
             }
           })
 
@@ -173,19 +190,7 @@ object main {
               JOptionPane.showMessageDialog(frame, s"Editando registro ID: ${tableLicencias.getValueAt(tableLicencias.getSelectedRow(), 0)} en $title")
             }
           })
-          eliminarBtn.addActionListener((e: ActionEvent) => {
-            val filaSeleccionada = tableLicencias.getSelectedRow
-            val modelo = tableLicencias.getModel.asInstanceOf[DefaultTableModel]
-            if (tableLicencias.getSelectedRow() == -1) {
-              JOptionPane.showMessageDialog(frame, s"Seleccione un registro para eliminar en $title")
-            } else {
-              if(mostrarMensajeConfirmacionEliminar()){
-                modelo.removeRow(filaSeleccionada)
-              }
-            }
-          })
           buttonPanel.add(editarBtn)
-          buttonPanel.add(eliminarBtn)
         }
         // Configurar panel
         panel.add(new JLabel(title, SwingConstants.CENTER), BorderLayout.NORTH)
@@ -303,7 +308,6 @@ object main {
     val campoNombre = new JTextField()
     val campoApellido = new JTextField()
     val campoCi = new JTextField()
-    val campoLicencia = new JTextField()
     val campoTelefono = new JTextField()
     val categoriaCarro = new JRadioButton()
     val categoriaMoto = new JRadioButton()
@@ -315,7 +319,6 @@ object main {
       "Nombre:", campoNombre,
       "Apellido:", campoApellido,
       "CI:", campoCi,
-      "Licencia:", campoLicencia,
       "Teléfono:", campoTelefono,
       "Categoria Carro", categoriaCarro,
       "Categoria Moto", categoriaMoto,
@@ -339,9 +342,13 @@ object main {
 
     // Si el usuario hace clic en OK, procesamos los datos
     if (resultado == JOptionPane.OK_OPTION) {
-      val contadorFilasLicencia = ConsultaLicencia.obtenerTodasLasLicencias().size
+      var idLicencia=Long.MinValue
+      ConsultaLicencia.obtenerUltimaLicencia() match{
+        case Right(id) => idLicencia=id
+        case Left(error)=> printf("No se pudo obtener la ultima licencia \n" + error)
+      }
       val licencia = Licencia(
-        (Some(contadorFilasLicencia + 1)),
+        Some(idLicencia + 1),
         categoriaMoto.isSelected,
         categoriaCarro.isSelected,
         categoriaCamion.isSelected,
@@ -368,7 +375,7 @@ object main {
            |Conductor registrado:
            |Nombre: ${conductor.nombre}
            |Apellido: ${conductor.apellido}
-           |Licencia: ${conductor.licencia}
+           |Licencia: ${licencia.id.getOrElse("N/A").toString}
            |Teléfono: ${conductor.telefono}
            |""".stripMargin,
         "Éxito",
@@ -378,7 +385,7 @@ object main {
         String.valueOf(contadorFilas + 1),
         campoNombre.getText,
         campoApellido.getText,
-        campoLicencia.getText,
+        licencia.id.getOrElse("N/A").toString,
         campoTelefono.getText)
       )
       try {

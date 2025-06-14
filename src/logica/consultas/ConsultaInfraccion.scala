@@ -160,5 +160,51 @@ object ConsultaInfraccion {
         }
   }
 
+  def eliminarInfraccion(idInfraccion: Long): Unit = {
+    ConectorBaseDato.conConexion { conn =>
+      try {
+        // 1. Obtener puntos e id_licencia antes de eliminar
+        val selectStmt = conn.prepareStatement(
+          "SELECT puntos_deducidos, id_licencia FROM infraccion WHERE id = ?"
+        )
+        selectStmt.setLong(1, idInfraccion)
+        val rs = selectStmt.executeQuery()
+
+        if (!rs.next()) {
+          Left("Infracción no encontrada")
+        }
+        val puntos = rs.getInt("puntos_deducidos")
+        val idLicencia = rs.getLong("id_licencia")
+        selectStmt.close()
+
+        // 2. Eliminar infracción
+        val deleteStmt = conn.prepareStatement("DELETE FROM infraccion WHERE id = ?")
+        deleteStmt.setLong(1, idInfraccion)
+
+        if (deleteStmt.executeUpdate() != 1) {
+          Left("Error al eliminar infracción")
+        }
+        deleteStmt.close()
+
+        // 3. Restaurar puntos en licencia
+        val updateStmt = conn.prepareStatement(
+          "UPDATE licencia SET puntos = puntos - ? WHERE id = ?"
+        )
+        updateStmt.setInt(1, puntos)
+        updateStmt.setLong(2, idLicencia)
+
+        if (updateStmt.executeUpdate() != 1) {
+          Left("Error al actualizar puntos de licencia")
+        }
+        updateStmt.close()
+
+        Right(())
+      } catch {
+        case e: SQLException =>
+          Left(s"Error de base de datos: ${e.getMessage}")
+      }
+    }
+  }
+
 }
 

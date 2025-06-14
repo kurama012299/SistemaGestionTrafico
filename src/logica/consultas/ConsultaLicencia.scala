@@ -54,6 +54,31 @@ object ConsultaLicencia
     }
   }
 
+  def obtenerUltimaLicencia(): Either[Unit,Long]={
+    ConectorBaseDato.conConexion { conn =>
+      try {
+        val query =
+          """
+           SELECT id 
+           FROM licencia 
+           ORDER BY id DESC 
+           LIMIT 1
+         """
+
+        val stmt = conn.prepareStatement(query)
+        val rs = stmt.executeQuery()
+
+        if (rs.next()) {
+          Right(rs.getLong("id"))
+        } else {
+          Left("No se encontraron licencias registradas")
+        }
+      } catch {
+        case e: SQLException => Left(s"Error de BD: ${e.getMessage}")
+      }
+    }
+  }
+
   def editarLicenciaConsulta(licencia: Licencia): Unit = {
     licencia.id match {
       case None => Left("No se encuentra el id_licencia")

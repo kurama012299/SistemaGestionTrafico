@@ -163,6 +163,37 @@ object ConsultaConductor {
 
   }
 
+  def eliminarConductor(carnetIdentidad: Long,idLicencia: Long): Unit = {
+    ConectorBaseDato.conConexion { conn =>
+      try {
+        val deleteStmt = conn.prepareStatement("DELETE FROM conductor WHERE carnet_identidad = ?")
+        deleteStmt.setLong(1, carnetIdentidad)
+
+        if (deleteStmt.executeUpdate() != 1) {
+          Left("Error al eliminar conductor")
+          println("error primero")
+        }
+        deleteStmt.close()
+
+        // 1. Verificar si existe antes de eliminar
+        val deleteLicenciastmt = conn.prepareStatement("DELETE FROM licencia WHERE id = ?")
+        deleteLicenciastmt.setLong(1, idLicencia)
+        if (!deleteLicenciastmt.executeQuery().next()) {
+          Left("Error al eliminar la licencia")
+          println("Error segundo")
+        }
+        deleteLicenciastmt.close()
+
+        Right(())
+      } catch {
+        case e: SQLException if e.getSQLState == "23503" =>
+          Left("No se puede eliminar: conductor tiene registros asociados (licencias/infracciones)")
+        case e: SQLException =>
+          Left(s"Error de base de datos: ${e.getMessage}")
+      }
+    }
+  }
+
 }
 
 
