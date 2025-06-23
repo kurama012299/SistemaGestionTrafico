@@ -4,12 +4,11 @@ import java.time.LocalDate
 import java.time.format.{DateTimeFormatter, ResolverStyle}
 import javax.swing.JOptionPane
 
-class Validador
-{
+class Validador {
 
   private val formatter = DateTimeFormatter.ofPattern("ddMMuu")
     .withResolverStyle(ResolverStyle.STRICT)
-  
+
   /**
    * Método que valida un string según ciertas reglas y muestra un panel de error si falla
    *
@@ -23,9 +22,6 @@ class Validador
         throw new IllegalArgumentException("El texto no puede estar vacío")
       }
 
-      if (texto.length < 5) {
-        throw new IllegalArgumentException("El texto debe tener al menos 5 caracteres")
-      }
 
       if (!texto.matches(".*[a-zA-Z].*")) {
         throw new IllegalArgumentException("El texto debe contener al menos una letra")
@@ -61,12 +57,7 @@ class Validador
         throw new IllegalArgumentException("El texto no puede estar vacío")
       }
 
-      // Validación 2: Exactamente 11 caracteres
-      if (texto.length != 11) {
-        throw new IllegalArgumentException("Debe tener exactamente 11 dígitos numéricos")
-      }
-
-      // Validación 3: Solo números (dígitos 0-9)
+      // Validación 2: Solo números (dígitos 0-9)
       if (!texto.matches("^\\d+$")) {
         throw new IllegalArgumentException("Solo se permiten números (0-9)")
       }
@@ -94,12 +85,17 @@ class Validador
    * @throws IllegalArgumentException cuando el texto no cumple las reglas de validación
    */
   def validarStringNumericoCarnet(texto: String): Unit = {
+    // Validación 1: Exactamente 11 caracteres
+    if (texto.length != 11) {
+      throw new IllegalArgumentException("Debe tener exactamente 11 dígitos numéricos")
+    }
     try {
       validarStringNumerico(texto)
-      
-      var temp = texto.substring(0,6)
+
+      var temp = texto.substring(0, 6)
       try {
         LocalDate.parse(temp, formatter)
+
       } catch {
         case e: Exception =>
           throw new IllegalArgumentException(s"Los primeros 6 dígitos deben ser una fecha válida (DDMMAA). Error: ${e.getMessage}")

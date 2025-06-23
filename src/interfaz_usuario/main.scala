@@ -2,6 +2,7 @@ package interfaz_usuario
 
 import com.formdev.flatlaf.FlatDarkLaf
 import com.toedter.calendar.{JCalendar, JDateChooser}
+import logica.Validador
 import logica.consultas.{ConsultaConductor, ConsultaInfraccion, ConsultaLicencia}
 import logica.modelos.*
 
@@ -18,6 +19,7 @@ import scala.language.postfixOps
 
 object main {
   def main(args: Array[String]): Unit = {
+
 
     FlatDarkLaf.setup()
     SwingUtilities.invokeLater(() => {
@@ -114,15 +116,15 @@ object main {
             if (tableConductores.getSelectedRow() == -1) {
               JOptionPane.showMessageDialog(frame, s"Seleccione un registro para eliminar en $title")
             } else {
-              try{
-                val carnetIdentidad: Long=modelo.getValueAt(tableConductores.getSelectedRow,0).toString.toLong
-                val idLicencia:Long=modelo.getValueAt(tableConductores.getSelectedRow,3).toString.toLong
-                ConsultaConductor.eliminarConductor(carnetIdentidad,idLicencia)
+              try {
+                val carnetIdentidad: Long = modelo.getValueAt(tableConductores.getSelectedRow, 0).toString.toLong
+                val idLicencia: Long = modelo.getValueAt(tableConductores.getSelectedRow, 3).toString.toLong
+                ConsultaConductor.eliminarConductor(carnetIdentidad, idLicencia)
                 if (mostrarMensajeConfirmacionEliminar()) {
                   modelo.removeRow(filaSeleccionada)
                 }
-              }catch{
-                case e:Exception=>
+              } catch {
+                case e: Exception =>
                   JOptionPane.showMessageDialog(frame, e.getMessage)
               }
 
@@ -157,14 +159,14 @@ object main {
             if (tableInfracciones.getSelectedRow() == -1) {
               JOptionPane.showMessageDialog(frame, s"Seleccione un registro para eliminar en $title")
             } else {
-              try{
-                val idInfraccion=modelo.getValueAt(tableInfracciones.getSelectedRow,0).toString.toLong
+              try {
+                val idInfraccion = modelo.getValueAt(tableInfracciones.getSelectedRow, 0).toString.toLong
                 ConsultaInfraccion.eliminarInfraccion(idInfraccion)
                 if (mostrarMensajeConfirmacionEliminar()) {
                   modelo.removeRow(filaSeleccionada)
                 }
-              }catch{
-                case e:Exception=>
+              } catch {
+                case e: Exception =>
                   JOptionPane.showMessageDialog(frame, e.getMessage)
               }
 
@@ -342,60 +344,78 @@ object main {
 
     // Si el usuario hace clic en OK, procesamos los datos
     if (resultado == JOptionPane.OK_OPTION) {
-      var idLicencia=Long.MinValue
-      ConsultaLicencia.obtenerUltimaLicencia() match{
-        case Right(id) => idLicencia=id
-        case Left(error)=> printf("No se pudo obtener la ultima licencia \n" + error)
+      var idLicencia = Long.MinValue
+      ConsultaLicencia.obtenerUltimaLicencia() match {
+        case Right(id) => idLicencia = id
+        case Left(error) => printf("No se pudo obtener la ultima licencia \n" + error)
       }
-      val licencia = Licencia(
-        Some(idLicencia + 1),
-        categoriaMoto.isSelected,
-        categoriaCarro.isSelected,
-        categoriaCamion.isSelected,
-        categoriaOmnibus.isSelected,
-        0,
-        fechaActualDate,
-        fechaAnnosDespuesDate
-      )
+      if (!categoriaMoto.isSelected && !categoriaCarro.isSelected && !categoriaOmnibus.isSelected && !categoriaCamion.isSelected) {
+        JOptionPane.showMessageDialog(
+          null,
+          s"Error de validación: Debe elegir una categoria",
+          "Error",
+          JOptionPane.ERROR_MESSAGE)
+      }
+      else {
+        val licencia = Licencia(
+          Some(idLicencia + 1),
+          categoriaMoto.isSelected,
+          categoriaCarro.isSelected,
+          categoriaCamion.isSelected,
+          categoriaOmnibus.isSelected,
+          0,
+          fechaActualDate,
+          fechaAnnosDespuesDate
+        )
 
-      val contadorFilas = modeloConductor.getRowCount
-      val conductor = Conductor(
-        (Some(campoCi.getText.toLong)),
-        campoNombre.getText,
-        campoApellido.getText,
-        (Some(licencia)),
-        campoTelefono.getText
-      )
+        val contadorFilas = modeloConductor.getRowCount
+
+        val validador = new Validador()
+        validador.validarString(campoNombre.getText)
+        validador.validarString(campoApellido.getText)
+        validador.validarStringNumerico(campoTelefono.getText)
+        validador.validarStringNumericoCarnet(campoCi.getText)
+
+        val conductor = Conductor(
+          (Some(campoCi.getText.toLong)),
+          campoNombre.getText,
+          campoApellido.getText,
+          (Some(licencia)),
+          campoTelefono.getText
+        )
 
 
-      // Mostramos los datos capturados (puedes guardarlos en una lista, BD, etc.)
-      JOptionPane.showMessageDialog(
-        null,
-        s"""
-           |Conductor registrado:
-           |Nombre: ${conductor.nombre}
-           |Apellido: ${conductor.apellido}
-           |Licencia: ${licencia.id.getOrElse("N/A").toString}
-           |Teléfono: ${conductor.telefono}
-           |""".stripMargin,
-        "Éxito",
-        JOptionPane.INFORMATION_MESSAGE
-      )
-      modeloConductor.addRow(Array[AnyRef](
-        String.valueOf(contadorFilas + 1),
-        campoNombre.getText,
-        campoApellido.getText,
-        licencia.id.getOrElse("N/A").toString,
-        campoTelefono.getText)
-      )
-      try {
-        val crearConductor = ConsultaConductor.crearConductorYLicencia(conductor, licencia)
-      } catch {
-        case e: Exception =>
-          printf("No se pudo crear el conductor \n" + e.getMessage)
+        // Mostramos los datos capturados (puedes guardarlos en una lista, BD, etc.)
+        JOptionPane.showMessageDialog(
+          null,
+          s"""
+             |Conductor registrado:
+             |Nombre: ${conductor.nombre}
+             |Apellido: ${conductor.apellido}
+             |Licencia: ${licencia.id.getOrElse("N/A").toString}
+             |Teléfono: ${conductor.telefono}
+             |""".stripMargin,
+          "Éxito",
+          JOptionPane.INFORMATION_MESSAGE
+        )
+        modeloConductor.addRow(Array[AnyRef](
+          campoCi.getText,
+          campoNombre.getText,
+          campoApellido.getText,
+          licencia.id.getOrElse("N/A").toString,
+          campoTelefono.getText)
+        )
+        try {
+          val crearConductor = ConsultaConductor.crearConductorYLicencia(conductor, licencia)
+        } catch {
+          case e: Exception =>
+            printf("No se pudo crear el conductor \n" + e.getMessage)
+        }
+
       }
 
-    } else {
+    }
+    else {
       JOptionPane.showMessageDialog(
         null,
         "Registro cancelado",
@@ -403,7 +423,6 @@ object main {
         JOptionPane.WARNING_MESSAGE
       )
     }
-
   }
 
   def agregarInfraccion(modeloInfraccion: DefaultTableModel): Unit = {
@@ -507,13 +526,13 @@ object main {
 
   def editarConductor(modeloConductor: DefaultTableModel, fila: Int): Unit = {
     // Obtener datos actuales de la fila
-    val ci=modeloConductor.getValueAt(fila,0).toString
+    val ci = modeloConductor.getValueAt(fila, 0).toString
     val nombre = modeloConductor.getValueAt(fila, 1).toString
     val apellido = modeloConductor.getValueAt(fila, 2).toString
     val telefono = modeloConductor.getValueAt(fila, 4).toString
 
     // Crear campos con los valores actuales
-    val campoCi=new JTextField(ci)
+    val campoCi = new JTextField(ci)
     val campoNombre = new JTextField(nombre)
     val campoApellido = new JTextField(apellido)
     val campoTelefono = new JTextField(telefono)
@@ -521,30 +540,30 @@ object main {
     val campos = Array(
       "Nombre:", campoNombre,
       "Apellido:", campoApellido,
-      "Ci:",campoCi,
+      "Ci:", campoCi,
       "Teléfono:", campoTelefono
     )
 
     if (JOptionPane.showConfirmDialog(null, campos, "Editar Conductor", JOptionPane.OK_CANCEL_OPTION) == JOptionPane.OK_OPTION) {
       // Actualizar la fila
 
-      modeloConductor.setValueAt(campoCi.getText,fila,0)
+      modeloConductor.setValueAt(campoCi.getText, fila, 0)
       modeloConductor.setValueAt(campoNombre.getText, fila, 1)
       modeloConductor.setValueAt(campoApellido.getText, fila, 2)
       modeloConductor.setValueAt(campoTelefono.getText, fila, 4)
 
-      val conductor =Conductor (
+      val conductor = Conductor(
         Some(campoCi.getText.toLong),
         campoNombre.getText,
         campoApellido.getText,
         None,
         campoTelefono.getText
       )
-      try{
+      try {
         ConsultaConductor.editarConductorConsulta(conductor, ci.toLong)
-      }catch
-        case e:Exception =>
-          printf("No se pudo editar el conductor \n"+e.getMessage)
+      } catch
+        case e: Exception =>
+          printf("No se pudo editar el conductor \n" + e.getMessage)
     }
   }
 
@@ -558,7 +577,7 @@ object main {
     val opcionesGravedad = Array[String](" ", "Leve", "Grave", "Muy grave")
     val modeloOpcionesGravedad = new DefaultComboBoxModel[String](opcionesGravedad)
 
-    val idInfraccion=modeloInfraccion.getValueAt(fila,0).toString
+    val idInfraccion = modeloInfraccion.getValueAt(fila, 0).toString
     val idLicencia = modeloInfraccion.getValueAt(fila, 1).toString
     val puntosDeducidos = modeloInfraccion.getValueAt(fila, 2)
     val gravedad = modeloInfraccion.getValueAt(fila, 3).toString
@@ -596,7 +615,7 @@ object main {
       modeloInfraccion.setValueAt(campoGravedad.getSelectedItem, fila, 3)
       modeloInfraccion.setValueAt(fechaFormateadaEditada, fila, 4)
 
-      val infraccion=Infraccion(
+      val infraccion = Infraccion(
         Some(idInfraccion.toLong),
         idLicencia.toLong,
         Integer.valueOf(campoPuntosDeducidos.getSelectedItem.toString),
@@ -604,16 +623,16 @@ object main {
         campoFecha.getDate
       )
       try {
-        ConsultaInfraccion.editarInfraccionConsulta(infraccion,Integer.valueOf(puntosDeducidos.toString))
+        ConsultaInfraccion.editarInfraccionConsulta(infraccion, Integer.valueOf(puntosDeducidos.toString))
       } catch
         case e: Exception =>
           printf("No se pudo editar la infraccion \n" + e.getMessage)
     }
-    }
+  }
 
   def editarLicencia(modeloLicencia: DefaultTableModel, fila: Int): Unit = {
 
-    val id=modeloLicencia.getValueAt(fila,0).toString
+    val id = modeloLicencia.getValueAt(fila, 0).toString
     val moto = modeloLicencia.getValueAt(fila, 1)
     val carro = modeloLicencia.getValueAt(fila, 2)
     val camion = modeloLicencia.getValueAt(fila, 3)
@@ -644,7 +663,7 @@ object main {
       modeloLicencia.setValueAt(convertirBoolean(campoCamion.isSelected), fila, 3)
       modeloLicencia.setValueAt(convertirBoolean(campoOmnibus.isSelected), fila, 4)
 
-      val licencia =Licencia(
+      val licencia = Licencia(
         Some(id.toLong),
         convertirStringABoolean(convertirBoolean(campoMoto.isSelected)),
         convertirStringABoolean(convertirBoolean(campoCarro.isSelected)),
@@ -660,7 +679,7 @@ object main {
         case e: Exception =>
           printf("No se pudo editar la licencia \n" + e.getMessage)
     }
-    }
+  }
 
 
   def convertirFecha(fecha: String): Option[Date] = {
