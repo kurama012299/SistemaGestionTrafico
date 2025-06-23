@@ -1,6 +1,6 @@
 package interfaz_usuario
 
-import com.formdev.flatlaf.FlatDarkLaf
+import com.formdev.flatlaf.{FlatDarkLaf, FlatLightLaf}
 import com.toedter.calendar.{JCalendar, JDateChooser}
 import logica.Validador
 import logica.consultas.{ConsultaConductor, ConsultaInfraccion, ConsultaLicencia}
@@ -13,6 +13,7 @@ import java.time.{LocalDate, ZoneId}
 import java.util.{Date, Locale}
 import javax.swing.*
 import javax.swing.table.DefaultTableModel
+import scala.collection.mutable
 import scala.jdk.CollectionConverters.*
 import scala.language.postfixOps
 
@@ -33,15 +34,23 @@ object main {
 
       // Crear la barra de menú
       val menuBar = new JMenuBar()
+      var seleccionoMenu:Boolean=false
+
 
       // Menú principal "Opciones"
       val menuOpciones = new JMenu("Opciones")
       val menuReportes = new JMenu("Reportes")
 
+
       // Elementos del menú desplegable
       val menuItemConductor = new JMenuItem("Conductor")
       val menuItemLicencia = new JMenuItem("Licencia")
       val menuItemInfraccion = new JMenuItem("Infracción")
+      val menuItemAtras = new JMenuItem("Atras")
+
+      val tableConductores = new JTable()
+      val tableLicencias = new JTable()
+      val tableInfracciones = new JTable()
 
       val menuItemReporteInfracciones = new JMenuItem("Infracciones emitidas")
       val menuItemReporteLicencias = new JMenuItem("Licencias emitidas")
@@ -50,13 +59,44 @@ object main {
       val cardPanel = new JPanel(new CardLayout())
 
       // Panel inicial vacío
-      val initialPanel = new JPanel()
-      val initialLabel = new JLabel("Seleccione una opción del menú", SwingConstants.CENTER)
+      val initialPanel = new JPanel(new BorderLayout())
+        val topPanel=new JPanel(new FlowLayout(FlowLayout.LEADING))
+      val initialLabel = new JLabel("Seleccione una opcion del menú", SwingConstants.CENTER)
       initialLabel.setFont(new Font("Arial", Font.PLAIN, 24))
-      initialPanel.add(initialLabel)
-      val tableConductores = new JTable()
-      val tableLicencias = new JTable()
-      val tableInfracciones = new JTable()
+      val selectorModoClaro = new JToggleButton("Modo claro")
+      selectorModoClaro.addActionListener(e =>{
+        try{
+          if (selectorModoClaro.isSelected()) {
+            FlatLightLaf.setup()
+            SwingUtilities.updateComponentTreeUI(frame)
+            updateTableColors(tableLicencias)
+            updateTableColors(tableInfracciones)
+            updateTableColors(tableConductores)
+            println("si")
+            selectorModoClaro.setText("Modo oscuro")
+          } else {
+            FlatDarkLaf.setup()
+            SwingUtilities.updateComponentTreeUI(frame)
+            updateTableColors(tableLicencias)
+            updateTableColors(tableInfracciones)
+            updateTableColors(tableConductores)
+            selectorModoClaro.setText("Modo claro")
+            println("No")
+          }
+        }catch
+        case e:Exception=>
+          println("No se pudo realizar el cambio de modo")
+
+      })
+
+      val panelCentral=new JPanel(new GridLayout(1,2,15,15))
+      panelCentral.add(createRecentActivityPanel())
+
+      initialPanel.add(initialLabel,BorderLayout.NORTH)
+      topPanel.add(selectorModoClaro)
+      initialPanel.add(topPanel,BorderLayout.EAST)
+      initialPanel.add(panelCentral,BorderLayout.CENTER)
+
 
       // Función para crear tablas con botones
 
@@ -116,10 +156,10 @@ object main {
             if (tableConductores.getSelectedRow() == -1) {
               JOptionPane.showMessageDialog(frame, s"Seleccione un registro para eliminar en $title")
             } else {
-              try {
-                val carnetIdentidad: Long = modelo.getValueAt(tableConductores.getSelectedRow, 0).toString.toLong
-                val idLicencia: Long = modelo.getValueAt(tableConductores.getSelectedRow, 3).toString.toLong
-                ConsultaConductor.eliminarConductor(carnetIdentidad, idLicencia)
+              try{
+                val carnetIdentidad: Long=modelo.getValueAt(tableConductores.getSelectedRow,0).toString.toLong
+                val idLicencia:Long=modelo.getValueAt(tableConductores.getSelectedRow,3).toString.toLong
+                ConsultaConductor.eliminarConductorCompleto(carnetIdentidad,idLicencia)
                 if (mostrarMensajeConfirmacionEliminar()) {
                   modelo.removeRow(filaSeleccionada)
                 }
@@ -188,7 +228,7 @@ object main {
             if (filaSeleccionada == -1) {
               JOptionPane.showMessageDialog(frame, s"Seleccione un registro para editar en $title")
             } else {
-              editarLicencia(modelo, filaSeleccionada)
+              editarLicencia(modelo,filaSeleccionada)
               JOptionPane.showMessageDialog(frame, s"Editando registro ID: ${tableLicencias.getValueAt(tableLicencias.getSelectedRow(), 0)} en $title")
             }
           })
@@ -273,18 +313,35 @@ object main {
         val panel = cargarConductores()
         cardPanel.add(panel, "conductores")
         cardPanel.getLayout.asInstanceOf[CardLayout].show(cardPanel, "conductores")
+        menuOpciones.add(menuItemAtras)
       })
 
       menuItemLicencia.addActionListener((e: ActionEvent) => {
         val panel = cargarLicencias()
         cardPanel.add(panel, "licencias")
         cardPanel.getLayout.asInstanceOf[CardLayout].show(cardPanel, "licencias")
+        menuOpciones.add(menuItemAtras)
       })
 
       menuItemInfraccion.addActionListener((e: ActionEvent) => {
         val panel = cargarInfracciones()
         cardPanel.add(panel, "infracciones")
         cardPanel.getLayout.asInstanceOf[CardLayout].show(cardPanel, "infracciones")
+        menuOpciones.add(menuItemAtras)
+      })
+
+      menuItemAtras.addActionListener((e: ActionEvent)=>{
+        cardPanel.add(initialPanel, "inicio")
+        cardPanel.getLayout.asInstanceOf[CardLayout].show(cardPanel, "inicio")
+        menuOpciones.remove(menuItemAtras)
+      })
+
+      menuItemReporteLicencias.addActionListener((e: ActionEvent)=>{
+        ActividadReciente.registrarAgregarEliminar("REPORTE","Licencias","Exitosamente",null)
+      })
+
+      menuItemReporteInfracciones.addActionListener((e: ActionEvent) => {
+        ActividadReciente.registrarAgregarEliminar("REPORTE", "Infracciones", "Exitosamente",null)
       })
 
       // Configurar menú
@@ -295,6 +352,11 @@ object main {
       menuReportes.add(menuItemReporteInfracciones)
       menuBar.add(menuOpciones)
       menuBar.add(menuReportes)
+
+
+
+
+
       frame.setJMenuBar(menuBar)
 
       // Mostrar ventana
@@ -306,6 +368,7 @@ object main {
 
 
   def agregarConductor(modeloConductor: DefaultTableModel, modeloLicencia: DefaultTableModel): Unit = {
+
 
     val campoNombre = new JTextField()
     val campoApellido = new JTextField()
@@ -503,7 +566,6 @@ object main {
           val crearInfraccion = ConsultaInfraccion.crearInfraccionConsulta(infraccion)
         } catch {
           case e: Exception =>
-            printf("No se pudo crear la infraccion \n" + e.getMessage)
         }
       }
       else {
@@ -553,11 +615,18 @@ object main {
       modeloConductor.setValueAt(campoApellido.getText, fila, 2)
       modeloConductor.setValueAt(campoTelefono.getText, fila, 4)
 
-      val conductor = Conductor(
+      var licenciaNueva:Licencia=null
+      val licencia=ConsultaLicencia.obtenerLicenciaPorId(modeloConductor.getValueAt(fila,3).toString.toLong)
+      licencia match
+        case None=>
+          println("No se encuentra la licencia")
+        case Some(licencia)=>licenciaNueva=licencia
+
+      val conductor =Conductor (
         Some(campoCi.getText.toLong),
         campoNombre.getText,
         campoApellido.getText,
-        None,
+        Some(licenciaNueva),
         campoTelefono.getText
       )
       try {
@@ -599,7 +668,7 @@ object main {
       case None =>
         println("Formato de fecha incorrecto")
 
-    val formato = new SimpleDateFormat("yyyy-MM-dd")
+    val formato = new SimpleDateFormat("yyyy/MM/dd")
     val fechaFormateada = formato.format(campoFecha.getDate)
 
     val campos = Array(
@@ -664,13 +733,13 @@ object main {
       modeloLicencia.setValueAt(convertirBoolean(campoCamion.isSelected), fila, 3)
       modeloLicencia.setValueAt(convertirBoolean(campoOmnibus.isSelected), fila, 4)
 
-      val licencia = Licencia(
+      val licencia =Licencia(
         Some(id.toLong),
         convertirStringABoolean(convertirBoolean(campoMoto.isSelected)),
         convertirStringABoolean(convertirBoolean(campoCarro.isSelected)),
         convertirStringABoolean(convertirBoolean(campoCamion.isSelected)),
         convertirStringABoolean(convertirBoolean(campoOmnibus.isSelected)),
-        0,
+        modeloLicencia.getValueAt(fila,5).toString.toInt,
         null,
         null
       )
@@ -703,6 +772,259 @@ object main {
   def mostrarMensajeConfirmacionEliminar(): Boolean = {
     val respuesta = JOptionPane.showConfirmDialog(null, "Desea eliminar este registro", "Eliminar", JOptionPane.YES_NO_OPTION)
     respuesta == JOptionPane.YES_OPTION
+  }
+
+  def updateTableColors(table: Component): Unit = {
+    table match {
+      case table: javax.swing.JTable =>
+        table.setBackground(UIManager.getColor("Table.background"))
+        table.setForeground(UIManager.getColor("Table.foreground"))
+        table.setGridColor(UIManager.getColor("Table.gridColor"))
+        table.setSelectionBackground(UIManager.getColor("Table.selectionBackground"))
+        table.setSelectionForeground(UIManager.getColor("Table.selectionForeground"))
+
+        // Actualizar el header de la tabla
+        Option(table.getTableHeader).foreach { header =>
+          header.setBackground(UIManager.getColor("TableHeader.background"))
+          header.setForeground(UIManager.getColor("TableHeader.foreground"))
+        }
+
+        // Actualizar renderers existentes
+        (0 until table.getColumnCount).foreach { i =>
+          table.getColumnModel.getColumn(i).getCellRenderer match {
+            case r: javax.swing.table.DefaultTableCellRenderer =>
+              r.setBackground(UIManager.getColor("Table.background"))
+              r.setForeground(UIManager.getColor("Table.foreground"))
+            case _ => // No hacer nada para renderers personalizados
+          }
+        }
+      case _ => // No es una tabla, no hacer nada
+    }
+  }
+
+  def createRecentActivityPanel(): JPanel = {
+    val panel = new JPanel(new BorderLayout())
+    panel.setBorder(BorderFactory.createTitledBorder("Actividad Reciente"))
+
+    // Cambiamos a DefaultListModel[ActividadReciente] para almacenar los objetos completos
+    val model = new DefaultListModel[ActividadReciente]()
+    val activityList = new JList[ActividadReciente](model)
+
+    // Configuramos el listener para doble click
+    activityList.addMouseListener(new MouseAdapter {
+      override def mouseClicked(e: MouseEvent): Unit = {
+        if(e.getClickCount == 2) { // Doble click
+          val indice = activityList.locationToIndex(e.getPoint)
+          if(indice != -1) {
+            val actividad = model.getElementAt(indice)
+            mostrarDetallesActividad(actividad)
+          }
+        }
+      }
+    })
+
+    // Función para mostrar detalles completos
+    def mostrarDetallesActividad(actividad: ActividadReciente): Unit = {
+      val dialog = new JDialog()
+      dialog.setResizable(false)
+      dialog.setModal(true)
+      dialog.setTitle(s"Detalles de Actividad - ${actividad.tipo}")
+      dialog.setLayout(new BorderLayout())
+
+      val panelPrincipal=new JPanel()
+      panelPrincipal.setLayout(new BoxLayout(panelPrincipal, BoxLayout.Y_AXIS))
+      val scroolPane = new JScrollPane(panelPrincipal)
+      dialog.add(scroolPane, BorderLayout.CENTER)
+
+      // Panel con información básica
+      val panelInfo = new JPanel(new GridLayout(0, 2, 5, 5))
+      panelInfo.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10))
+
+      val formatoFecha = new java.text.SimpleDateFormat("yyyy-MM-dd")
+
+      panelInfo.add(new JLabel("Fecha:"))
+      panelInfo.add(new JLabel(formatoFecha.format(actividad.fecha)))
+      panelInfo.add(new JLabel("Tipo:"))
+      actividad.tipo match
+        case "MODIFICAR"=>
+          panelInfo.add(new JLabel(actividad.tipo)).setForeground(new Color(0, 145, 255))
+        case "AGREGAR"=>
+          panelInfo.add(new JLabel(actividad.tipo)).setForeground(new Color(0, 200, 83))
+        case "ELIMINAR"=>
+          panelInfo.add(new JLabel(actividad.tipo)).setForeground(new Color(255, 61, 0))
+        case _=>
+          panelInfo.add(new JLabel(actividad.tipo)).setForeground(Color.BLACK)
+
+      panelInfo.add(new JLabel("Entidad:"))
+      panelInfo.add(new JLabel(actividad.entidad))
+
+      panelPrincipal.add(panelInfo)
+
+      if(actividad.tipo.equalsIgnoreCase("Modificar")){
+        val panelCambio= new JPanel()
+        panelCambio.setLayout(new BoxLayout(panelCambio,BoxLayout.Y_AXIS))
+        panelCambio.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10))
+
+        (actividad.objetoEntidad,actividad.objetoEntidadModificada) match{
+          case (conductor:Conductor,conductorViejo:Conductor) => {
+            panelCambio.add(compararValores("Nombre", conductorViejo.nombre, conductor.nombre))
+            panelCambio.add(compararValores("Apellido", conductorViejo.apellido, conductor.apellido))
+            conductorViejo.id match
+              case None => {
+                println("No se encontró el carnet de identidad del conductor modificado")
+              }
+              case Some(id) => {
+                conductor.id match
+                  case None=>
+                    println("No se encontró el carnet de identidad del conductor")
+                  case Some(idActual)=>
+                    panelCambio.add(compararValores("CI", id.toString,idActual.toString))
+              }
+                panelCambio.add(compararValores("Teléfono", conductorViejo.telefono, conductor.telefono))
+                panelPrincipal.add(panelCambio)
+          }
+          case (infraccion:Infraccion,infraccionVieja:Infraccion)=>
+            panelCambio.add(compararValores("Puntos deducidos", infraccionVieja.puntos.toString, infraccion.puntos.toString))
+            panelCambio.add(compararValores("Gravedad", infraccionVieja.gravedad, infraccion.gravedad))
+            panelCambio.add(compararValores("Fecha", infraccionVieja.fecha, infraccion.fecha))
+            panelPrincipal.add(panelCambio)
+          case (licencia:Licencia,licenciaVieja:Licencia)=>
+            panelCambio.add(compararValores("Carro", convertirBoolean(licenciaVieja.automovil), convertirBoolean(licencia.automovil)))
+            panelCambio.add(compararValores("Moto", convertirBoolean(licenciaVieja.moto), convertirBoolean(licencia.moto)))
+            panelCambio.add(compararValores("Camión", convertirBoolean(licenciaVieja.camion), convertirBoolean(licencia.camion)))
+            panelCambio.add(compararValores("Omnibús", convertirBoolean(licenciaVieja.omnibus), convertirBoolean(licencia.omnibus)))
+            panelCambio.add(compararValores("Puntos",licenciaVieja.puntos.toString,licencia.puntos.toString))
+            panelPrincipal.add(panelCambio)
+          case _:(AnyRef, AnyRef) =>
+            println("No se encuentra el objeto")
+        }
+
+      }
+      else if(actividad.tipo.equalsIgnoreCase("Eliminar") || actividad.tipo.equalsIgnoreCase("Agregar")){
+        val panelCambio = new JPanel()
+        panelCambio.setLayout(new BoxLayout(panelCambio, BoxLayout.Y_AXIS))
+        panelCambio.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10))
+        actividad.objetoEntidad match{
+          case conductor: Conductor=>
+            panelCambio.add(escribirValores("Nombre",conductor.nombre))
+            panelCambio.add(escribirValores("Apellidos",conductor.apellido))
+            conductor.id match
+              case None=>
+                println("No se encontró el carnet de identidad del conductor")
+              case Some(idActual)=>
+                panelCambio.add(escribirValores("CI",idActual))
+            panelCambio.add(escribirValores("Teléfono",conductor.telefono))
+            panelPrincipal.add(panelCambio)
+          case licencia: Licencia=>
+            panelCambio.add(escribirValores("Carro",convertirBoolean(licencia.automovil)))
+            panelCambio.add(escribirValores("Moto",convertirBoolean(licencia.moto)))
+            panelCambio.add(escribirValores("Camión",convertirBoolean(licencia.camion)))
+            panelCambio.add(escribirValores("Omnibús",convertirBoolean(licencia.omnibus)))
+            if(actividad.tipo.equalsIgnoreCase("eliminar")){
+              panelCambio.add(escribirValores("Puntos",licencia.puntos))
+            }
+            panelPrincipal.add(panelCambio)
+          case infraccion:Infraccion=>
+            panelCambio.add(escribirValores("Puntos deducidos", infraccion.puntos))
+            panelCambio.add(escribirValores("Gravedad", infraccion.gravedad))
+            panelCambio.add(escribirValores("Fecha",infraccion.fecha))
+            panelPrincipal.add(panelCambio)
+        }
+      }
+      else{
+        val panelCambio = new JPanel()
+        panelCambio.setLayout(new BoxLayout(panelCambio, BoxLayout.Y_AXIS))
+        panelCambio.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10))
+        panelCambio.add(new JLabel(s"<html><div style='width:200px;'><b/>Reporte generado exitosamente de ${actividad.entidad} emitidas en un periodo de tiempo</b></div></html>"))
+        panelPrincipal.add(panelCambio)
+      }
+
+
+      // Construir el diálogo
+      dialog.pack()
+      dialog.add(panelInfo, BorderLayout.NORTH)
+      dialog.setSize(300, 200)
+      dialog.setLocationRelativeTo(null)
+      dialog.setVisible(true)
+    }
+
+    // Función para actualizar la lista
+    def actualizarLista(): Unit = {
+      model.clear()
+      ActividadReciente.obtenerRecientes().foreach { actividad =>
+        model.addElement(actividad) // Ahora agregamos el objeto completo
+      }
+    }
+
+    // Configurar el renderizado de items
+    activityList.setCellRenderer(new DefaultListCellRenderer() {
+      override def getListCellRendererComponent(
+                                                 list: JList[_],
+                                                 value: Any,
+                                                 index: Int,
+                                                 isSelected: Boolean,
+                                                 cellHasFocus: Boolean
+                                               ): Component = {
+        val c = super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus)
+        c.asInstanceOf[JLabel].setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5))
+
+        value match {
+          case actividad: ActividadReciente =>
+            val formatoFecha = new java.text.SimpleDateFormat("HH:mm:ss")
+            c.asInstanceOf[JLabel].setText(s"${formatoFecha.format(actividad.fecha)} [${actividad.tipo}] ${actividad.entidad}: ${actividad.detalles}")
+
+            // Cambiar color según el tipo de actividad
+            actividad.tipo match {
+              case "AGREGAR" => c.setForeground(new Color(0, 200, 83)) // Verde
+              case "MODIFICAR" => c.setForeground(new Color(0, 145, 255)) // Azul
+              case "ELIMINAR" => c.setForeground(new Color(255, 61, 0)) // Rojo
+              case _ => c.setForeground(Color.BLACK)
+            }
+
+          case _ => c.asInstanceOf[JLabel].setText(value.toString)
+        }
+        c
+      }
+    })
+
+    // Actualizar inicialmente
+    actualizarLista()
+
+    panel.add(new JScrollPane(activityList), BorderLayout.CENTER)
+    ActividadReciente.addListener(actualizarLista())
+
+    panel
+  }
+
+  def compararValores(campo:String,viejo:Any,actual:Any): JLabel ={
+    val formatoFecha= new SimpleDateFormat("yyyy-MM-dd")
+    val (viejoValor,actualValor)= (viejo, actual) match {
+      case (d1: java.util.Date, d2: java.util.Date) =>
+        (formatoFecha.format(d1), formatoFecha.format(d2))
+      case _ =>
+        (viejo.toString, actual.toString)
+    }
+
+    var texto: String = " "
+    if(viejoValor!= actualValor){
+        texto=(s"<html><b>$campo modificado:</b> <font color='red'>$viejoValor</font>  ->  <font color ='green'>$actualValor</font><html>")
+    }
+    else{
+      texto=(s"<html><b>$campo:</b> $actualValor (sin cambios)</html>")
+    }
+    new JLabel(texto)
+  }
+
+  def escribirValores(campo:String,actual:Any): JLabel ={
+    val formatoFecha= new SimpleDateFormat("yyyy-MM-dd")
+    val actualValor = actual match {
+      case d1: java.util.Date =>
+        formatoFecha.format(d1)
+      case _ =>
+         actual.toString
+    }
+    val texto=(s"<html><b>$campo:</b> $actualValor</html>")
+    new JLabel(texto)
   }
 }
 

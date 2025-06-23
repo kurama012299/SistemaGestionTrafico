@@ -1,9 +1,9 @@
 package logica.consultas
 
 import infraestructura.ConectorBaseDato
-import logica.modelos.{Conductor, Licencia}
+import logica.modelos.{ActividadReciente, Conductor, Licencia}
 
-import java.sql.{Date, PreparedStatement, ResultSet, SQLException}
+import java.sql.{Connection, Date, PreparedStatement, ResultSet, SQLException}
 import scala.collection.mutable.ListBuffer
 
 object ConsultaConductor {
@@ -66,12 +66,13 @@ object ConsultaConductor {
       conductores.toList
     }
   }
-  def obtenerInfoLicencia(conductor: Conductor):String = conductor.licencia match{
+
+  def obtenerInfoLicencia(conductor: Conductor): String = conductor.licencia match {
     case Some(lic) => s"${lic.id}"
   }
 
   def crearConductorYLicencia(conductor: Conductor, licencia: Licencia): Unit = {
-    val conn = ConectorBaseDato.getConexion()  // Obtiene conexión directamente
+    val conn = ConectorBaseDato.getConexion() // Obtiene conexión directamente
     try {
       conn.setAutoCommit(false)
 
@@ -122,22 +123,36 @@ object ConsultaConductor {
       }
       stmtConductor.close()
 
-      conn.commit()  // Confirma si todo va bien
+      conn.commit() // Confirma si todo va bien
 
     } catch {
       case e: Exception =>
-        conn.rollback()  // Revierte en caso de error
-        throw e  // Relanza la excepción
+        conn.rollback() // Revierte en caso de error
+        throw e // Relanza la excepción
     } finally {
       conn.setAutoCommit(true)
       conn.close()
     }
+
+    val categorias = new StringBuilder
+    licencia.obtenerCategorias().foreach { categoria =>
+      if (categorias.nonEmpty) categorias.append(", ")
+      categorias.append(categoria)
+    }
+    ActividadReciente.registrarAgregarEliminar("AGREGAR", "Conductor", conductor.nombre + " " + conductor.apellido,conductor)
+    ActividadReciente.registrarAgregarEliminar("AGREGAR", "Licencia", categorias.toString(),licencia)
   }
 
-  def editarConductorConsulta(conductor: Conductor, ciViejo:Long): Unit = {
-    conductor.id match{
+  def editarConductorConsulta(conductor: Conductor, ciViejo: Long): Unit = {
+    conductor.id match {
       case None => Left("Id del conductor incorrecto")
       case Some(id) =>
+        val conductorViejo=obtenerConductorPorCI(ciViejo.toLong)
+        conductorViejo match
+          case None =>
+            println("No se encontro el conductor")
+          case Some(conductorViejo)=>
+            ActividadReciente.registrarEditar("MODIFICAR","Conductor",conductor.nombre+" "+conductor.apellido,conductor,conductorViejo)
         ConectorBaseDato.conConexion { conn =>
           try {
             val consulta =
@@ -159,41 +174,85 @@ object ConsultaConductor {
             case e: SQLException => Left(s"Error de BD: ${e.getMessage}")
           }
         }
+
     }
 
   }
 
-  def eliminarConductor(carnetIdentidad: Long,idLicencia: Long): Unit = {
-    ConectorBaseDato.conConexion { conn =>
+  def eliminarConductorCompleto(carnetIdentidad: Long, idLicencia: Long): Unit = {
+    val resultado=ConectorBaseDato.conConexion { conn =>
       try {
-        val deleteStmt = conn.prepareStatement("DELETE FROM conductor WHERE carnet_identidad = ?")
-        deleteStmt.setLong(1, carnetIdentidad)
+        conn.setAutoCommit(false)
+        val licencia = ConsultaLicencia.obtenerLicenciaPorId(idLicencia)
+        val categorias = new StringBuilder
+        licencia match
+          case Some(licencia) =>
+            licencia.obtenerCategorias().foreach { categoria =>
+              if (categorias.nonEmpty) categorias.append(", ")
+              categorias.append(categoria)
+              }
+          case None =>
+            println("No hay licencia")
 
-        if (deleteStmt.executeUpdate() != 1) {
-          Left("Error al eliminar conductor")
-          println("error primero")
-        }
-        deleteStmt.close()
+        val conductor = obtenerConductorPorCI(carnetIdentidad)
+        var conductorNombre = " "
+        conductor match
+          case Some(conductor) =>
+            conductorNombre = conductor.nombre + " " + conductor.apellido
+            val licenciaEliminar = ConsultaLicencia.obtenerLicenciaPorId(idLicencia)
+            licenciaEliminar match
+              case None =>
+                println("No se encuentra la licencia")
+              case Some(licenciaEliminar) => {
+                  ActividadReciente.registrarAgregarEliminar("ELIMINAR", "Licencia", categorias.toString() + "  " + conductorNombre, licenciaEliminar)
+                  ActividadReciente.registrarAgregarEliminar("ELIMINAR", "Conductor", conductorNombre, conductor)
+                }
+          case None =>
+            println("No hay conductor")
 
-        // 1. Verificar si existe antes de eliminar
-        val deleteLicenciastmt = conn.prepareStatement("DELETE FROM licencia WHERE id = ?")
-        deleteLicenciastmt.setLong(1, idLicencia)
-        if (!deleteLicenciastmt.executeQuery().next()) {
-          Left("Error al eliminar la licencia")
-          println("Error segundo")
-        }
-        deleteLicenciastmt.close()
 
-        Right(())
+        val idLicenciaOption:Option[Long]=Some(idLicencia)
+        idLicenciaOption.foreach(ConsultaInfraccion.eliminarInfraccionesDeLicencia(conn, _))
+        eliminarConductor(conn, carnetIdentidad)
+        idLicenciaOption.foreach(ConsultaLicencia.eliminarLicencia(conn, _))
+        conn.commit()
+        true
       } catch {
-        case e: SQLException if e.getSQLState == "23503" =>
-          Left("No se puede eliminar: conductor tiene registros asociados (licencias/infracciones)")
         case e: SQLException =>
-          Left(s"Error de base de datos: ${e.getMessage}")
+          try {
+            conn.setAutoCommit(true)
+          } catch {
+            case _: SQLException =>
+          }
+          Left(s"Error al eliminar conductor: ${e.getMessage}")
+          false
+
+      } finally {
+        try {
+        } catch {
+          case _: SQLException =>
+        }
       }
     }
+    if(!resultado){
+      println("ERROR al eliminar conductor")
+    }
   }
 
+  def eliminarConductor(conn: Connection, idConductor: Long): Unit = {
+    var stmt: PreparedStatement = null
+    try {
+      val query = "DELETE FROM conductor WHERE carnet_identidad = ?"
+      stmt = conn.prepareStatement(query)
+      stmt.setLong(1, idConductor)
+      stmt.executeUpdate()
+    } finally {
+      if (stmt != null) stmt.close()
+      conn.setAutoCommit(false)
+    }
+  }
 }
+
+
 
 

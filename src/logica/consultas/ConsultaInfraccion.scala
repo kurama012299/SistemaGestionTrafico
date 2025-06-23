@@ -1,9 +1,9 @@
 package logica.consultas
 
 import infraestructura.ConectorBaseDato
-import logica.modelos.Infraccion
+import logica.modelos.{ActividadReciente, Infraccion, Licencia}
 
-import java.sql.{PreparedStatement, ResultSet, SQLException}
+import java.sql.{Connection, PreparedStatement, ResultSet, SQLException}
 import scala.collection.mutable.ListBuffer
 
 object ConsultaInfraccion {
@@ -50,11 +50,46 @@ object ConsultaInfraccion {
       }
     }
   }
+
+  def contarInfraccionesPorLicencia(idLicencia: Long): Option[Integer] = {
+    val resultado:Either[_,Option[Integer]]=ConectorBaseDato.conConexion { conn =>
+      try {
+        val query = """
+        SELECT COUNT(*) AS total
+        FROM infraccion
+        WHERE id_licencia = ?
+      """
+
+        val stmt = conn.prepareStatement(query)
+        try {
+          stmt.setLong(1, idLicencia)
+          val rs = stmt.executeQuery()
+
+          if (rs.next()) {
+            Right(Some(rs.getInt("total")))
+          } else {
+            Right(None)
+          }
+        } finally {
+          stmt.close()
+        }
+      } catch {
+        case _: SQLException =>
+          Right(None)
+      }
+    }
+    resultado match
+      case Right(option)=> option
+      case Left(_)=> None
+  }
+
   
   def crearInfraccionConsulta(infraccion: Infraccion): Unit = {
-   val conn = ConectorBaseDato.conConexion { conn =>
+   ConectorBaseDato.conConexion { conn =>
       try {
+        ActividadReciente.registrarAgregarEliminar("AGREGAR", "Infraccion", "Gravedad: " + infraccion.gravedad + " " + "Puntos deducidos: " + infraccion.puntos,infraccion)
         conn.setAutoCommit(false)
+        val licenciaVieja=ConsultaLicencia.obtenerLicenciaPorId(infraccion.id_licencia)
 
         val consultaInfraccion =
           """INSERT INTO "infraccion" ("id_licencia", "puntos_deducidos",
@@ -90,6 +125,15 @@ object ConsultaInfraccion {
         conn.commit() // Confirmar transacción
         println("Infracción registrada y puntos actualizados")
 
+
+        (ConsultaLicencia.obtenerLicenciaPorId(infraccion.id_licencia), licenciaVieja) match
+          case (Some(licencianNueva), Some(licenciaVieja)) =>
+            ActividadReciente.registrarEditar("MODIFICAR", "Licencia", "Puntos: " + licencianNueva.puntos, licencianNueva, licenciaVieja)
+          case (None, _) =>
+            println("No se encontro la licencia")
+          case (_, None) =>
+            println("No se encontro la licencia")
+
       } catch {
         case e: SQLException =>
           conn.rollback()
@@ -100,12 +144,22 @@ object ConsultaInfraccion {
         conn.close()
       }
     }
+
   }
 
   def editarInfraccionConsulta(infraccion: Infraccion,puntosAnteriores:Int): Unit = {
     infraccion.id match
       case None => Left("No se pudo encontrar la infraccion")
       case Some(id)=>
+        val infraccionVieja=obtenerInfraccionPorId(id)
+        infraccionVieja match
+          case None=>
+            Left("No se pudo encontrar la infraccion")
+          case Some(infraccionVieja)=>{
+            ActividadReciente.registrarEditar("MODIFICAR", "Infraccion", "Gravedad: " + infraccion.gravedad + " " + "Puntos deducidos: " + infraccion.puntos, infraccion, infraccionVieja)
+          }
+
+        val licenciaVieja=ConsultaLicencia.obtenerLicenciaPorId(infraccion.id_licencia)
         ConectorBaseDato.conConexion { conn =>
           try {
             val puntosCambiaron=infraccion.puntos != puntosAnteriores
@@ -138,6 +192,7 @@ object ConsultaInfraccion {
                        UPDATE "licencia"
                        SET puntos = puntos + ?
                        WHERE id = ? AND puntos <=36
+
                      """
                   val stmLicencia = conn.prepareStatement(consultaLicencia)
                   try{
@@ -148,21 +203,39 @@ object ConsultaInfraccion {
                   }finally{
                     stmLicencia.close()
                   }
-
               }
 
 
             }
             Right(())
+
           } catch {
             case e: SQLException => Left(s"Error de BD: ${e.getMessage}")
           }
         }
+
+        (ConsultaLicencia.obtenerLicenciaPorId(infraccion.id_licencia), licenciaVieja) match
+          case (Some(licencianNueva), Some(licenciaVieja)) =>
+            ActividadReciente.registrarEditar("MODIFICAR", "Licencia", "Puntos: " + licencianNueva.puntos, licencianNueva, licenciaVieja)
+          case (None, _) =>
+            println("No se encontro la licencia")
+          case (_, None) =>
+            println("No se encontro la licencia")
   }
 
   def eliminarInfraccion(idInfraccion: Long): Unit = {
     ConectorBaseDato.conConexion { conn =>
       try {
+        val infraccion=obtenerInfraccionPorId(idInfraccion)
+        var puntosInfraccion=0
+        infraccion match
+          case Some(infraccion)=>
+            puntosInfraccion=infraccion.puntos
+            ActividadReciente.registrarAgregarEliminar("ELIMINAR","Infraccion","Puntos eliminados: "+puntosInfraccion +"  "+ "Id licencia: "+infraccion.id_licencia.toString,infraccion)
+          case None=>
+            println("No se encuentra la infraccion")
+
+
         // 1. Obtener puntos e id_licencia antes de eliminar
         val selectStmt = conn.prepareStatement(
           "SELECT puntos_deducidos, id_licencia FROM infraccion WHERE id = ?"
@@ -203,6 +276,18 @@ object ConsultaInfraccion {
         case e: SQLException =>
           Left(s"Error de base de datos: ${e.getMessage}")
       }
+    }
+  }
+
+  def eliminarInfraccionesDeLicencia(conn: Connection, idLicencia: Long): Unit = {
+    var stmt: PreparedStatement = null
+    try {
+      val query = "DELETE FROM infraccion WHERE id_licencia = ?"
+      stmt = conn.prepareStatement(query)
+      stmt.setLong(1, idLicencia)
+      stmt.executeUpdate()
+    } finally {
+      if (stmt != null) stmt.close()
     }
   }
 

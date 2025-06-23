@@ -1,9 +1,9 @@
 package logica.consultas
 
 import infraestructura.ConectorBaseDato
-import logica.modelos.{Conductor, Licencia}
+import logica.modelos.{ActividadReciente, Conductor, Licencia}
 
-import java.sql.{Date, PreparedStatement, ResultSet, SQLException}
+import java.sql.{Connection, Date, PreparedStatement, ResultSet, SQLException}
 import scala.collection.mutable.ListBuffer
 
 object ConsultaLicencia
@@ -83,6 +83,19 @@ object ConsultaLicencia
     licencia.id match {
       case None => Left("No se encuentra el id_licencia")
       case Some(id)=>
+
+        val categorias = new StringBuilder
+        licencia.obtenerCategorias().foreach { categoria =>
+          if (categorias.nonEmpty) categorias.append(", ")
+          categorias.append(categoria)
+        }
+        val licenciaVieja=obtenerLicenciaPorId(id)
+        licenciaVieja match
+          case None =>
+            Left("No se encuentra el id_licencia")
+          case Some(licenciaVieja)=>
+            ActividadReciente.registrarEditar("MODIFICAR","Licencia",categorias.toString(),licencia,licenciaVieja)
+        
         ConectorBaseDato.conConexion { conn =>
           try {
             val consulta =
@@ -106,6 +119,19 @@ object ConsultaLicencia
         }
     }
 
+
+  }
+
+  def eliminarLicencia(conn: Connection, idLicencia: Long): Unit = {
+    var stmt: PreparedStatement = null
+    try {
+      val query = "DELETE FROM licencia WHERE id = ?"
+      stmt = conn.prepareStatement(query)
+      stmt.setLong(1, idLicencia)
+      stmt.executeUpdate()
+    } finally {
+      if (stmt != null) stmt.close()
+    }
   }
 
 }
