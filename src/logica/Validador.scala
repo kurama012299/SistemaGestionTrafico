@@ -45,6 +45,37 @@ class Validador {
   }
 
   /**
+   * Método que valida un string según ciertas reglas y muestra un panel de error si falla
+   *
+   * @param texto El string a validar
+   * @throws IllegalArgumentException cuando el texto no cumple las reglas de validación < 8 caracteres
+   */
+  def validarTamannoTelefono(texto: String): Unit = {
+    try {
+
+
+      if (texto.length < 8) {
+        throw new IllegalArgumentException("El telefono debe contener al menos 8 digitos")
+      }
+
+      // Si pasa todas las validaciones
+      println("Texto válido: " + texto)
+
+    } catch {
+      case e: IllegalArgumentException =>
+        // Mostrar el panel de error con el mensaje de excepción
+        JOptionPane.showMessageDialog(
+          null,
+          s"Error de validación: ${e.getMessage}",
+          "Error",
+          JOptionPane.ERROR_MESSAGE
+        )
+        // Relanzar la excepción si es necesario
+        throw e
+    }
+  }
+
+  /**
    * Método que valida un string que debe contener solo números y tener exactamente 11 caracteres
    *
    * @param texto El string a validar
@@ -94,11 +125,12 @@ class Validador {
 
       var temp = texto.substring(0, 6)
       try {
-        LocalDate.parse(temp, formatter)
-
+        var fecha = LocalDate.parse(temp, formatter)
+        if (LocalDate.now().getYear - fecha.getYear < 18)
+          throw new Exception()
       } catch {
         case e: Exception =>
-          throw new IllegalArgumentException(s"Los primeros 6 dígitos deben ser una fecha válida (DDMMAA). Error: ${e.getMessage}")
+          throw new IllegalArgumentException(s"Deben ser una fecha válida Formato:(DDMMAA) , mayor 18 años.")
       }
 
       // Si pasa todas las validaciones
