@@ -375,6 +375,7 @@ object main {
         validador.validarString(campoApellido.getText)
         validador.validarStringNumerico(campoTelefono.getText)
         validador.validarStringNumericoCarnet(campoCi.getText)
+        validador.validarTamannoTelefono(campoTelefono.getText)
 
         val conductor = Conductor(
           (Some(campoCi.getText.toLong)),
