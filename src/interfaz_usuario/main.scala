@@ -2,6 +2,7 @@ package interfaz_usuario
 
 import com.formdev.flatlaf.{FlatDarkLaf, FlatLightLaf}
 import com.toedter.calendar.{JCalendar, JDateChooser}
+import logica.Reportes.ReportGenerator.{InfraccionesEmitidas, LicenciasEmitidas, generarReporte}
 import logica.Validador
 import logica.consultas.{ConsultaConductor, ConsultaInfraccion, ConsultaLicencia}
 import logica.modelos.*
@@ -337,10 +338,12 @@ object main {
       })
 
       menuItemReporteLicencias.addActionListener((e: ActionEvent)=>{
+        generarReporte(LicenciasEmitidas)
         ActividadReciente.registrarAgregarEliminar("REPORTE","Licencias","Exitosamente",null)
       })
 
       menuItemReporteInfracciones.addActionListener((e: ActionEvent) => {
+        generarReporte(InfraccionesEmitidas)
         ActividadReciente.registrarAgregarEliminar("REPORTE", "Infracciones", "Exitosamente",null)
       })
 
