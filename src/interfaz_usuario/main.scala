@@ -500,10 +500,10 @@ object main {
 
   def agregarInfraccion(modeloInfraccion: DefaultTableModel): Unit = {
 
-    val opcionesPuntos = Array[AnyRef]( Integer.valueOf(8), Integer.valueOf(10), Integer.valueOf(12))
+    val opcionesPuntos = Array[AnyRef](Integer.valueOf(8), Integer.valueOf(10), Integer.valueOf(12))
     val modeloOpcionesPuntos = new DefaultComboBoxModel[AnyRef](opcionesPuntos)
 
-    val opcionesGravedad = Array[String]( "Leve", "Grave", "Muy grave")
+    val opcionesGravedad = Array[String]("Leve", "Grave", "Muy grave")
     val modeloOpcionesGravedad = new DefaultComboBoxModel[String](opcionesGravedad)
 
 
@@ -554,6 +554,15 @@ object main {
           )
           throw new Exception("Fecha futura no permitida")
         }
+
+        if (campoIdLicencia.getText().isEmpty)
+          JOptionPane.showMessageDialog(
+            null,
+            "La fecha no puede ser futura",
+            "Error de fecha",
+            JOptionPane.ERROR_MESSAGE
+          )
+          throw new Exception("El id de la licencia es obligatorio")
       } catch {
         case e: Exception =>
           return
