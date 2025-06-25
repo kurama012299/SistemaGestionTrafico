@@ -22,14 +22,14 @@ class Validador {
     try {
       // Validación 1: No nulo y no vacío
       if (texto == null || texto.trim.isEmpty) {
-        showErrorDialog("Error: El texto no puede estar vacío")
+        showErrorDialog("Error: El campo no puede estar vacío")
         throw new IllegalArgumentException("Texto vacío o nulo")
       }
 
-      // Validación 2: Debe contener al menos una letra
-      if (!texto.matches(".*[a-zA-Z].*")) {
-        showErrorDialog("Error: El texto debe contener al menos una letra")
-        throw new IllegalArgumentException("Texto sin letras")
+      // Validación 2: Solo letras (incluye acentos y ñ/Ñ)
+      if (!texto.matches("^[a-zA-ZáéíóúÁÉÍÓÚñÑ\\s]+$")) {
+        showErrorDialog("Error: Solo se permiten letras (no se admiten números ni caracteres especiales)")
+        throw new IllegalArgumentException("Texto contiene caracteres no permitidos")
       }
 
       // Si pasa todas las validaciones
@@ -41,6 +41,7 @@ class Validador {
         throw e
     }
   }
+
 
   /**
    * Método que valida un string según ciertas reglas y muestra un panel de error si falla
@@ -54,7 +55,7 @@ class Validador {
   def validarTamannoTelefono(texto: String): Unit = {
     try {
       // Validación principal
-      if (texto == null || texto.length < 8) {
+      if (texto == null || texto.length != 8) {
         val mensaje = if (texto == null) "El teléfono no puede ser nulo"
         else "El teléfono debe contener al menos 8 dígitos"
 
@@ -135,10 +136,17 @@ class Validador {
       }
 
       val fechaStr = texto.substring(0, 6)
-      val formatter = DateTimeFormatter.ofPattern("ddMMyy")
+      val formatter = DateTimeFormatter.ofPattern("yyMMdd")
 
       try {
-        val fecha = LocalDate.parse(fechaStr, formatter)
+        val fechaParsed = LocalDate.parse(fechaStr, formatter)
+
+        // Determinar el siglo correcto
+        val anoDosDigitos = fechaStr.substring(0, 2).toInt
+        val siglo = if (anoDosDigitos <= 25) 2000 else 1900
+        val fecha = fechaParsed.plusYears(siglo - 2000) // Ajustar el siglo
+
+        println(s"Fecha interpretada: $fecha") // Para depuración
 
         // Validar que la fecha no sea futura
         if (fecha.isAfter(LocalDate.now())) {
@@ -149,13 +157,13 @@ class Validador {
         val edad = Period.between(fecha, LocalDate.now()).getYears
 
         if (edad < 18) {
-          showErrorDialog("Error: Edad insuficiente ($edad años). Debe ser mayor de 18 años")
+          showErrorDialog(s"Error: Edad insuficiente ($edad años). Debe ser mayor de 18 años")
           throw new IllegalArgumentException("Edad insuficiente")
         }
 
       } catch {
         case e: DateTimeParseException =>
-          showErrorDialog("Error: Los primeros 6 dígitos deben ser una fecha válida (DDMMAA)\"")
+          showErrorDialog("Error: Los primeros 6 dígitos deben ser una fecha válida (AAMMDD)")
           throw new IllegalArgumentException("Fecha inválida")
       }
 
@@ -164,7 +172,6 @@ class Validador {
 
     } catch {
       case e: IllegalArgumentException =>
-        // Relanzamos la excepción para que el código llamador la maneje
         throw e
     }
   }
