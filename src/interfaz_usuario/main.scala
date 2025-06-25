@@ -500,10 +500,10 @@ object main {
 
   def agregarInfraccion(modeloInfraccion: DefaultTableModel): Unit = {
 
-    val opcionesPuntos = Array[AnyRef](, Integer.valueOf(8), Integer.valueOf(10), Integer.valueOf(12))
+    val opcionesPuntos = Array[AnyRef]( Integer.valueOf(8), Integer.valueOf(10), Integer.valueOf(12))
     val modeloOpcionesPuntos = new DefaultComboBoxModel[AnyRef](opcionesPuntos)
 
-    val opcionesGravedad = Array[String](, "Leve", "Grave", "Muy grave")
+    val opcionesGravedad = Array[String]( "Leve", "Grave", "Muy grave")
     val modeloOpcionesGravedad = new DefaultComboBoxModel[String](opcionesGravedad)
 
 
