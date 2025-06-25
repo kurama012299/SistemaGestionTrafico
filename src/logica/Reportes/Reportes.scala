@@ -1,5 +1,7 @@
 package logica.Reportes
 
+import com.itextpdf.*
+
 import java.io.{File, FileOutputStream, IOException}
 import java.time.{LocalDate, LocalDateTime}
 import java.time.format.DateTimeFormatter
@@ -7,7 +9,7 @@ import java.awt.Desktop
 import com.itextpdf.text.*
 import com.itextpdf.text.pdf.{PdfPCell, PdfPTable, PdfWriter}
 import logica.consultas.{ConsultaConductor, ConsultaInfraccion, ConsultaLicencia}
-import logica.modelos.{Infraccion, Licencia, Conductor}
+import logica.modelos.{Conductor, Infraccion, Licencia}
 
 import scala.collection.JavaConverters.*
 import scala.collection.immutable.List
