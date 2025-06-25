@@ -232,7 +232,7 @@ object main {
               JOptionPane.showMessageDialog(frame, s"Seleccione un registro para editar en $title")
             } else {
               var exito = editarLicencia(modelo, filaSeleccionada)
-              if(exito)
+              if (exito)
                 JOptionPane.showMessageDialog(frame, s"Editando registro ID: ${tableLicencias.getValueAt(tableLicencias.getSelectedRow(), 0)} en $title")
             }
           })
@@ -341,14 +341,14 @@ object main {
       })
 
 
-      menuItemReporteLicencias.addActionListener((e: ActionEvent)=>{
+      menuItemReporteLicencias.addActionListener((e: ActionEvent) => {
         generarReporte(LicenciasEmitidas)
-        ActividadReciente.registrarAgregarEliminar("REPORTE","Licencias","Exitosamente",null)
+        ActividadReciente.registrarAgregarEliminar("REPORTE", "Licencias", "Exitosamente", null)
       })
 
       menuItemReporteInfracciones.addActionListener((e: ActionEvent) => {
         generarReporte(InfraccionesEmitidas)
-        ActividadReciente.registrarAgregarEliminar("REPORTE", "Infracciones", "Exitosamente",null)
+        ActividadReciente.registrarAgregarEliminar("REPORTE", "Infracciones", "Exitosamente", null)
       })
 
       // Configurar menú
@@ -500,10 +500,10 @@ object main {
 
   def agregarInfraccion(modeloInfraccion: DefaultTableModel): Unit = {
 
-    val opcionesPuntos = Array[AnyRef](" ", Integer.valueOf(8), Integer.valueOf(10), Integer.valueOf(12))
+    val opcionesPuntos = Array[AnyRef](, Integer.valueOf(8), Integer.valueOf(10), Integer.valueOf(12))
     val modeloOpcionesPuntos = new DefaultComboBoxModel[AnyRef](opcionesPuntos)
 
-    val opcionesGravedad = Array[String](" ", "Leve", "Grave", "Muy grave")
+    val opcionesGravedad = Array[String](, "Leve", "Grave", "Muy grave")
     val modeloOpcionesGravedad = new DefaultComboBoxModel[String](opcionesGravedad)
 
 
