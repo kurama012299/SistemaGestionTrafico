@@ -529,6 +529,22 @@ object main {
 
     // Si el usuario hace clic en OK, procesamos los datos
     if (resultado == JOptionPane.OK_OPTION) {
+
+      try {
+        if (campoIdLicencia.getText().trim().isEmpty)
+          JOptionPane.showMessageDialog(
+            null,
+            "El id licencia es obligatorio",
+            "Error de fecha",
+            JOptionPane.ERROR_MESSAGE
+          )
+          throw new Exception("El id de la licencia es obligatorio")
+      } catch {
+        case e: Exception =>
+          return
+      }
+
+
       val contadorFilas = modeloInfraccion.getRowCount
       val infraccion = Infraccion(
         (Some(contadorFilas + 1)),
@@ -555,14 +571,7 @@ object main {
           throw new Exception("Fecha futura no permitida")
         }
 
-        if (campoIdLicencia.getText().isEmpty)
-          JOptionPane.showMessageDialog(
-            null,
-            "La fecha no puede ser futura",
-            "Error de fecha",
-            JOptionPane.ERROR_MESSAGE
-          )
-          throw new Exception("El id de la licencia es obligatorio")
+
       } catch {
         case e: Exception =>
           return
